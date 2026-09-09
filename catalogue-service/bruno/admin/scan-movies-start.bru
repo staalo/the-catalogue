@@ -1,0 +1,26 @@
+meta {
+  name: scan-movies-start
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:3000/api/admin/media/scan-movies
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: 202
+}
+
+tests {
+  test("should return 202 Accepted with scanId", function() {
+    expect(res.status).to.equal(202);
+    const body = res.getBody();
+    expect(body).to.have.property('scanId');
+    expect(body.scanId).to.be.a('number');
+    expect(body).to.have.property('status');
+    expect(body.status).to.equal('Scan started');
+  });
+}

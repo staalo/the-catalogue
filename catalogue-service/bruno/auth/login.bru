@@ -1,0 +1,28 @@
+meta {
+  name: Login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/userlogin
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "email@email.com",
+    "password": "!Salasana1"
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("response has email", function() {
+    expect(res.getBody()).to.have.property("email");
+  });
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Ping Auth (auth required)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/pingauth
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("response has email", function() {
+    expect(res.getBody()).to.have.property("email");
+  });
+}

@@ -1,0 +1,31 @@
+meta {
+  name: get-scan-status
+  type: http
+  seq: 3
+}
+
+get {
+  url: http://localhost:3000/api/admin/media/scan-status/movies
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: 200 | 404
+}
+
+tests {
+  test("should return latest scan status or 404 if no scans exist", function() {
+    const status = res.status;
+    expect([200, 404]).to.include(status);
+    
+    if (status === 200) {
+      const body = res.getBody();
+      expect(body).to.have.property('id');
+      expect(body).to.have.property('status');
+      expect(body).to.have.property('scanType');
+      expect(['running', 'completed', 'failed']).to.include(body.status);
+      expect(body.scanType).to.equal('movies');
+    }
+  });
+}

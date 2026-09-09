@@ -1,0 +1,23 @@
+meta {
+  name: search-movies-no-session
+  type: http
+  seq: 4
+}
+
+get {
+  url: http://localhost:3000/api/search/movies?q=test
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: 401
+}
+
+tests {
+  test("should return 401 when not authenticated", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+    expect(data.error).to.include('Unauthorized');
+  });
+}
