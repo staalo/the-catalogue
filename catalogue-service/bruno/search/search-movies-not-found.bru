@@ -1,0 +1,22 @@
+meta {
+  name: search-movies-not-found
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://localhost:3000/api/search/movies?q=nonexistentmovie12345
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: 404
+}
+
+tests {
+  test("should return 404 when no movies found", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+  });
+}

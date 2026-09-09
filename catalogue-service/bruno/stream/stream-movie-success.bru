@@ -1,0 +1,25 @@
+meta {
+  name: stream-movie-success
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:3000/api/stream/movies/1
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: 200 | 404 | 403
+}
+
+tests {
+  test("should return 200 with video stream or 404/403 if unauthorized", function() {
+    if (res.status === 200) {
+      // Content-Type should be one of the allowed video types
+      const contentType = res.getHeader('content-type');
+      expect(contentType).to.be.oneOf(['video/mp4', 'video/x-matroska', 'video/webm', 'video/x-msvideo', 'video/quicktime']);
+    }
+  });
+}

@@ -1,0 +1,24 @@
+meta {
+  name: stream-movie-not-found
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://localhost:3000/api/stream/movies/99999
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: 401 | 404
+}
+
+tests {
+  test("should return 404 for nonexistent movie", function() {
+    if (res.status === 404) {
+      const data = res.getBody();
+      expect(data).to.have.property('error');
+    }
+  });
+}

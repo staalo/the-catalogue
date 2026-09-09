@@ -1,0 +1,17 @@
+meta {
+  name: Get Current User - no session (expect 401)
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/getcurrentuser
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 401", function() {
+    expect(res.getStatus()).to.equal(401);
+  });
+}

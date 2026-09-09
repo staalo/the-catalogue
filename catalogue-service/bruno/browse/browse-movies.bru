@@ -1,0 +1,37 @@
+meta {
+  name: Browse Movies (page 1)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/browse/browsemovies?page=1
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 200 or 404", function() {
+    expect([200, 404]).to.include(res.getStatus());
+  });
+
+  test("response has pagination fields when 200", function() {
+    if (res.getStatus() === 200) {
+      const body = res.getBody();
+      expect(body).to.have.property("page");
+      expect(body).to.have.property("results");
+      expect(body).to.have.property("totalPages");
+      expect(body).to.have.property("totalResults");
+    }
+  });
+
+  test("stream URLs are shaped correctly when 200", function() {
+    if (res.getStatus() === 200) {
+      const body = res.getBody();
+      if (body.results.length > 0) {
+        const movie = body.results[0];
+        expect(movie.url).to.match(/^stream\/movies\/\d+\//);
+      }
+    }
+  });
+}

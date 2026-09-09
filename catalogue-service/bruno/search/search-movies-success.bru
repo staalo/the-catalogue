@@ -1,0 +1,34 @@
+meta {
+  name: search-movies-success
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:3000/api/search/movies?q=test
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: 200
+}
+
+tests {
+  test("should return search results with query", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('query', 'test');
+    expect(data).to.have.property('totalResults');
+    expect(data).to.have.property('results');
+    expect(data.results).to.be.an('array');
+    if (data.results.length > 0) {
+      const movie = data.results[0];
+      expect(movie).to.have.property('id');
+      expect(movie).to.have.property('title');
+      expect(movie).to.have.property('cast');
+      expect(movie).to.have.property('crew');
+      expect(movie).to.have.property('genres');
+      expect(movie).to.have.property('extras');
+    }
+  });
+}

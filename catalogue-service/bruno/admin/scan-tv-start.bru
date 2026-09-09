@@ -1,0 +1,28 @@
+meta {
+  name: scan-tv-start
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3000/api/admin/media/scan-tv
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: 202 | 400
+}
+
+tests {
+  test("should return 202 Accepted for TV scan or 400 if no TV path configured", function() {
+    const status = res.status;
+    expect([202, 400]).to.include(status);
+    
+    if (status === 202) {
+      const body = res.getBody();
+      expect(body).to.have.property('scanId');
+      expect(body.scanId).to.be.a('number');
+    }
+  });
+}

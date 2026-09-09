@@ -1,0 +1,32 @@
+meta {
+  name: get-scan-by-id
+  type: http
+  seq: 4
+}
+
+get {
+  url: http://localhost:3000/api/admin/media/scan/1
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: 200 | 404
+}
+
+tests {
+  test("should return scan details or 404 if not found", function() {
+    const status = res.status;
+    expect([200, 404]).to.include(status);
+    
+    if (status === 200) {
+      const body = res.getBody();
+      expect(body).to.have.property('id');
+      expect(body).to.have.property('status');
+      expect(body).to.have.property('totalFiles');
+      expect(body).to.have.property('processedFiles');
+      expect(body).to.have.property('skippedFiles');
+      expect(body).to.have.property('errorCount');
+    }
+  });
+}
