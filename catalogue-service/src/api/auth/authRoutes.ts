@@ -44,7 +44,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   // POST /logout
   app.post("/logout", async (request, reply) => {
-    await request.session.destroy();
+    request.session.destroy();
     return reply.send({});
   });
 
