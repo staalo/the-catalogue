@@ -1,5 +1,4 @@
 import path from "node:path";
-import fs from "node:fs";
 import { getMovieById } from "../../infra/db/repositories/localMovieRepository.js";
 import { getMediaPaths } from "../../infra/db/repositories/localMediaRepository.js";
 import {
@@ -45,10 +44,10 @@ async function getAuthorizedMoviesPath(
 /**
  * Safely resolve and validate a file for streaming.
  */
-function tryResolveFile(
+async function tryResolveFile(
   filePath: string,
   moviesPath: string,
-): [StreamStatus, StreamFile | null] {
+): Promise<[StreamStatus, StreamFile | null]> {
   // Check path is under authorized directory
   if (!isPathUnderDirectory(filePath, moviesPath)) {
     return [StreamStatus.Forbidden, null];
@@ -56,15 +55,14 @@ function tryResolveFile(
 
   const fullPath = path.resolve(filePath);
 
-  // Check file exists
-  if (!fs.existsSync(fullPath)) {
-    return [StreamStatus.NotFound, null];
-  }
-
   // Check content type is allowed
   const contentType = getContentType(fullPath);
   if (!contentType) {
     return [StreamStatus.Forbidden, null];
+  }
+
+  if (!(await fileExists(fullPath))) {
+    return [StreamStatus.NotFound, null];
   }
 
   return [StreamStatus.Ok, { filePath: fullPath, contentType }];
@@ -88,7 +86,7 @@ export async function tryGetMovieStream(
     return [StreamStatus.NotFound, null];
   }
 
-  return tryResolveFile(movie.url, moviesPath);
+  return await tryResolveFile(movie.url, moviesPath);
 }
 
 /**
@@ -123,7 +121,7 @@ export async function tryGetMovieAssetStream(
     return [StreamStatus.Forbidden, null];
   }
 
-  return tryResolveFile(assetPath, moviesPath);
+  return await tryResolveFile(assetPath, moviesPath);
 }
 
 /**
@@ -153,7 +151,7 @@ export async function tryGetExtraStream(
     return [StreamStatus.Forbidden, null];
   }
 
-  return tryResolveFile(extra.url, moviesPath);
+  return await tryResolveFile(extra.url, moviesPath);
 }
 
 /**
@@ -194,5 +192,5 @@ export async function tryGetExtraAssetStream(
     return [StreamStatus.Forbidden, null];
   }
 
-  return tryResolveFile(assetPath, moviesPath);
+  return await tryResolveFile(assetPath, moviesPath);
 }
