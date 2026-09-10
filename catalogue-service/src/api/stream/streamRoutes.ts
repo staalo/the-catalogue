@@ -1,5 +1,4 @@
-import type { FastifyInstance } from "fastify";
-import { createReadStream } from "node:fs";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requireAuth } from "../../modules/auth/middleware.js";
 import {
   tryGetMovieStream,
@@ -7,7 +6,22 @@ import {
   tryGetExtraStream,
   tryGetExtraAssetStream,
   StreamStatus,
+  type StreamFile,
 } from "../../modules/stream/streamService.js";
+import { sendRangedFile } from "../../modules/stream/rangeStream.js";
+
+function sendStreamFile(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  file: StreamFile,
+): Promise<FastifyReply> {
+  return sendRangedFile(
+    reply,
+    file.filePath,
+    file.contentType,
+    request.headers.range,
+  );
+}
 
 /**
  * Stream routes — mirrors StreamController.cs
@@ -40,9 +54,7 @@ export async function registerStreamRoutes(
         return reply.status(403).send({ error: "Forbidden" });
       }
 
-      return reply
-        .type(file!.contentType)
-        .send(createReadStream(file!.filePath));
+      return sendStreamFile(request, reply, file!);
     },
   );
 
@@ -76,9 +88,7 @@ export async function registerStreamRoutes(
         return reply.status(403).send({ error: "Forbidden" });
       }
 
-      return reply
-        .type(file!.contentType)
-        .send(createReadStream(file!.filePath));
+      return sendStreamFile(request, reply, file!);
     },
   );
 
@@ -114,9 +124,7 @@ export async function registerStreamRoutes(
         return reply.status(403).send({ error: "Forbidden" });
       }
 
-      return reply
-        .type(file!.contentType)
-        .send(createReadStream(file!.filePath));
+      return sendStreamFile(request, reply, file!);
     },
   );
 
@@ -150,9 +158,7 @@ export async function registerStreamRoutes(
         return reply.status(403).send({ error: "Forbidden" });
       }
 
-      return reply
-        .type(file!.contentType)
-        .send(createReadStream(file!.filePath));
+      return sendStreamFile(request, reply, file!);
     },
   );
 }

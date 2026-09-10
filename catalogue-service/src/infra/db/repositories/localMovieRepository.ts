@@ -20,6 +20,11 @@ export interface MovieWithRelations extends InferSelectModel<
   trailer: InferSelectModel<typeof localMovieTrailers> | null;
 }
 
+/** Stream lookups only need the movie row plus extras — not cast/crew/genres/trailer. */
+export type MovieWithExtras = InferSelectModel<typeof localMovies> & {
+  extras: InferSelectModel<typeof localMovieExtras>[];
+};
+
 const PAGE_SIZE = 20;
 
 /**
@@ -62,11 +67,11 @@ export async function getMoviesPaginated(
 /** Fetch a single movie with extras only (used by the stream module). */
 export async function getMovieById(
   id: number,
-): Promise<MovieWithRelations | undefined> {
+): Promise<MovieWithExtras | undefined> {
   return (await db.query.localMovies.findFirst({
-    with: { cast: true, crew: true, genres: true, extras: true, trailer: true },
+    with: { extras: true },
     where: (m, { eq }) => eq(m.id, id),
-  })) as MovieWithRelations | undefined;
+  })) as MovieWithExtras | undefined;
 }
 
 /** Fetch a single movie by its file URL (used by the watcher). */

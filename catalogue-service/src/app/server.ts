@@ -10,6 +10,7 @@ import { registerSearchRoutes } from "../api/search/searchRoutes.js";
 import { registerStreamRoutes } from "../api/stream/streamRoutes.js";
 import { registerMediaWatcherRoutes } from "../api/admin/mediaWatcherRoutes.js";
 import { AppError } from "../shared/errors/AppError.js";
+import { skipUnmodifiedSessionSave } from "../modules/auth/middleware.js";
 import {
   setupFileWatchers,
   stopAllWatchers,
@@ -41,6 +42,11 @@ export async function buildServer() {
 
   await app.register(fastifyCookie);
 
+  // Fastify runs onSend in registration order. This must run before
+  // @fastify/session so media GETs skip the rolling store write + Set-Cookie,
+  // except when the cookie is close to expiry.
+  app.addHook("onSend", skipUnmodifiedSessionSave);
+
   await app.register(fastifySession, {
     secret: config.sessionSecret,
     cookieName: "sessionId",
@@ -62,7 +68,7 @@ export async function buildServer() {
       }
     },
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Range"],
     exposedHeaders: [
       "Accept-Ranges",
       "Content-Range",
