@@ -1,14 +1,34 @@
 import bcrypt from "bcrypt";
 import {
+  createUser,
   findUserByEmail,
   findUserById,
+  findUserByUserName,
 } from "../../infra/db/repositories/userRepository.js";
-import { UnauthorizedError } from "../../shared/errors/AppError.js";
+import { upsertMediaPaths } from "../../infra/db/repositories/localMediaRepository.js";
+import {
+  BadRequestError,
+  ConflictError,
+  UnauthorizedError,
+} from "../../shared/errors/AppError.js";
+import { resolveExistingDirectory } from "../media-paths/mediaPathService.js";
+import { assertPasswordMeetsIdentityRules } from "./passwordPolicy.js";
 
 export interface AuthUser {
   id: string;
   email: string;
   userName: string;
+}
+
+export interface RegisteredUser extends AuthUser {
+  moviesPath: string | null;
+}
+
+export interface RegisterUserInput {
+  email: string;
+  password: string;
+  userName?: string | undefined;
+  moviesPath?: string | undefined;
 }
 
 /**
@@ -37,6 +57,51 @@ export async function loginUser(
   }
 
   return { id: user.id, email: user.email ?? email, userName: user.userName };
+}
+
+/**
+ * Create a new account and an empty media-paths row.
+ * moviesPath is optional and can be set later via PUT /api/media/paths.
+ */
+export async function registerUser(
+  input: RegisterUserInput,
+): Promise<RegisteredUser> {
+  const email = input.email.trim();
+  const userName = (input.userName?.trim() || email);
+  const moviesPathInput = input.moviesPath?.trim() || undefined;
+
+  if (!email || !input.password) {
+    throw new BadRequestError("email and password are required");
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new BadRequestError("email is invalid");
+  }
+
+  assertPasswordMeetsIdentityRules(input.password);
+
+  if (findUserByEmail(email) || findUserByUserName(userName)) {
+    throw new ConflictError("An account with this email or user name already exists");
+  }
+
+  const moviesPath = moviesPathInput
+    ? await resolveExistingDirectory(moviesPathInput)
+    : null;
+
+  const user = await createUser({
+    userName,
+    email,
+    password: input.password,
+  });
+
+  upsertMediaPaths(user.userName, { moviesPath, tvPath: null });
+
+  return {
+    id: user.id,
+    email: user.email ?? email,
+    userName: user.userName,
+    moviesPath,
+  };
 }
 
 /**

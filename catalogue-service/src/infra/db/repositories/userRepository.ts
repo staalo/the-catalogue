@@ -31,6 +31,20 @@ export function findUserByEmail(email: string): User | undefined {
     .get();
 }
 
+/** Find a user by user name (case-insensitive via normalizedUserName). */
+export function findUserByUserName(userName: string): User | undefined {
+  return db
+    .select({
+      id: users.id,
+      userName: users.userName,
+      email: users.email,
+      passwordHash: users.passwordHash,
+    })
+    .from(users)
+    .where(eq(users.normalizedUserName, userName.toUpperCase()))
+    .get();
+}
+
 /** Find a user by their primary key. */
 export function findUserById(id: string): User | undefined {
   return db

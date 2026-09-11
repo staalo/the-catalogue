@@ -8,6 +8,7 @@ import { healthRoutes } from "../api/health/healthRoutes.js";
 import { browseRoutes } from "../api/browse/browseRoutes.js";
 import { registerSearchRoutes } from "../api/search/searchRoutes.js";
 import { registerStreamRoutes } from "../api/stream/streamRoutes.js";
+import { registerMediaPathRoutes } from "../api/media/mediaPathRoutes.js";
 import { registerMediaWatcherRoutes } from "../api/admin/mediaWatcherRoutes.js";
 import { AppError } from "../shared/errors/AppError.js";
 import { skipUnmodifiedSessionSave } from "../modules/auth/middleware.js";
@@ -92,6 +93,7 @@ export async function buildServer() {
   await app.register(browseRoutes);
   await app.register(registerSearchRoutes);
   await app.register(registerStreamRoutes);
+  await app.register(registerMediaPathRoutes);
   await app.register(registerMediaWatcherRoutes);
 
   try {
