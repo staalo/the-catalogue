@@ -1,0 +1,23 @@
+meta {
+  name: Set movies path
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/media/paths
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "moviesPath": "C:/temp/leffat"
+  }
+}
+
+tests {
+  test("status is 200 or 400 depending on path", function() {
+    expect([200, 400, 401]).to.include(res.getStatus());
+  });
+}

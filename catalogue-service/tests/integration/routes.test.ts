@@ -5,11 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const loginUserMock = vi.fn();
 const resolveSessionMock = vi.fn();
+const registerUserMock = vi.fn();
 const browseMoviesMock = vi.fn();
 
 vi.mock("../../src/modules/auth/authService.js", () => ({
   loginUser: loginUserMock,
   resolveSession: resolveSessionMock,
+  registerUser: registerUserMock,
 }));
 
 vi.mock("../../src/modules/browse/browseService.js", () => ({
@@ -65,6 +67,7 @@ describe("route behavior", () => {
   beforeEach(() => {
     loginUserMock.mockReset();
     resolveSessionMock.mockReset();
+    registerUserMock.mockReset();
     browseMoviesMock.mockReset();
   });
 
@@ -133,6 +136,51 @@ describe("route behavior", () => {
 
     expect(pingAuthRes.statusCode).toBe(200);
     expect(pingAuthRes.json()).toEqual({ email: "user@example.com" });
+
+    await app.close();
+  });
+
+  it("registers a user and authenticates the session", async () => {
+    const app = await createApp();
+
+    registerUserMock.mockResolvedValueOnce({
+      id: "u-300",
+      email: "new@example.com",
+      userName: "new@example.com",
+      moviesPath: null,
+    });
+
+    const registerRes = await app.inject({
+      method: "POST",
+      url: "/register",
+      payload: { email: "new@example.com", password: "!Salasana1" },
+    });
+
+    expect(registerRes.statusCode).toBe(201);
+    expect(registerRes.json()).toEqual({
+      email: "new@example.com",
+      userName: "new@example.com",
+      moviesPath: null,
+    });
+
+    const cookie = getCookie(
+      registerRes as unknown as { headers: Record<string, unknown> },
+    );
+
+    resolveSessionMock.mockReturnValueOnce({
+      id: "u-300",
+      email: "new@example.com",
+      userName: "new@example.com",
+    });
+
+    const meRes = await app.inject({
+      method: "GET",
+      url: "/getcurrentuser",
+      headers: { cookie },
+    });
+
+    expect(meRes.statusCode).toBe(200);
+    expect(meRes.json()).toEqual({ email: "new@example.com" });
 
     await app.close();
   });
