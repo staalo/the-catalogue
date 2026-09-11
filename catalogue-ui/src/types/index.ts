@@ -103,12 +103,36 @@ export type Media = {
 
 export type CurrentUser = {
   email: string;
+  userName: string;
+};
+
+export type MediaPaths = {
+  moviesPath: string | null;
+  tvPath: string | null;
+};
+
+export type UpdateMediaPathsRequest = {
+  moviesPath?: string | null;
+  tvPath?: string | null;
 };
 
 export type LoginRequest = {
   email: string;
   password: string;
   rememberMe?: boolean;
+};
+
+export type RegisterRequest = {
+  email: string;
+  password: string;
+  userName?: string;
+  moviesPath?: string;
+};
+
+export type RegisterResponse = {
+  email: string;
+  userName: string;
+  moviesPath: string | null;
 };
 
 export type PlayerTarget = {

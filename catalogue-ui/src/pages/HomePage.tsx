@@ -7,6 +7,8 @@ import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import { Hero } from '@/components/catalogue/Hero';
 import { LoginDialog } from '@/components/catalogue/LoginDialog';
+import { ProfileDialog } from '@/components/catalogue/ProfileDialog';
+import { RegisterDialog } from '@/components/catalogue/RegisterDialog';
 import { MediaDetailsDialog } from '@/components/catalogue/MediaDetailsDialog';
 import { PlayerDialog } from '@/components/catalogue/PlayerDialog';
 import { Rail } from '@/components/catalogue/Rail';
@@ -22,6 +24,8 @@ export function HomePage() {
   const [selected, setSelected] = useState<Media | null>(null);
   const [player, setPlayer] = useState<PlayerTarget | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const { data: user } = useCurrentUser();
@@ -69,8 +73,10 @@ export function HomePage() {
         email={user?.email}
         onLogin={() => setLoginOpen(true)}
         onLogout={() => {
+          setProfileOpen(false);
           void logout.mutateAsync();
         }}
+        onProfile={() => setProfileOpen(true)}
       />
       <Hero
         featured={authenticated ? featured : null}
@@ -132,7 +138,28 @@ export function HomePage() {
           </>
         ) : null}
       </Box>
-      <LoginDialog open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <LoginDialog
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        onRegister={() => {
+          setLoginOpen(false);
+          setRegisterOpen(true);
+        }}
+      />
+      <RegisterDialog
+        open={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+        onLogin={() => {
+          setRegisterOpen(false);
+          setLoginOpen(true);
+        }}
+      />
+      <ProfileDialog
+        open={profileOpen}
+        email={user?.email ?? ''}
+        userName={user?.userName ?? ''}
+        onClose={() => setProfileOpen(false)}
+      />
       <MediaDetailsDialog
         item={selected}
         onClose={() => setSelected(null)}

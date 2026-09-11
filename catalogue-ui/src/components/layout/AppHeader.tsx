@@ -16,6 +16,7 @@ type AppHeaderProps = {
   email?: string;
   onLogin: () => void;
   onLogout: () => void;
+  onProfile: () => void;
 };
 
 export function AppHeader({
@@ -25,8 +26,14 @@ export function AppHeader({
   email,
   onLogin,
   onLogout,
+  onProfile,
 }: AppHeaderProps) {
   const initial = email?.trim().charAt(0).toUpperCase() || 'A';
+  const avatar = (
+    <Avatar sx={{ width: 31, height: 31, bgcolor: 'primary.main', fontSize: 13 }}>
+      {initial}
+    </Avatar>
+  );
 
   return (
     <Box
@@ -83,9 +90,19 @@ export function AppHeader({
           sx={{ ml: 1, color: 'white', fontSize: 13, flex: 1 }}
         />
       </Paper>
-      <Avatar sx={{ width: 31, height: 31, bgcolor: 'primary.main', fontSize: 13 }}>
-        {initial}
-      </Avatar>
+      {authenticated ? (
+        <IconButton
+          color="inherit"
+          size="small"
+          onClick={onProfile}
+          aria-label="open profile"
+          sx={{ p: 0 }}
+        >
+          {avatar}
+        </IconButton>
+      ) : (
+        avatar
+      )}
       <IconButton
         color="inherit"
         size="small"

@@ -15,6 +15,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': { target: catalogueService, changeOrigin: true },
+      '/register': { target: catalogueService, changeOrigin: true },
       '/userlogin': { target: catalogueService, changeOrigin: true },
       '/logout': { target: catalogueService, changeOrigin: true },
       '/getcurrentuser': { target: catalogueService, changeOrigin: true },

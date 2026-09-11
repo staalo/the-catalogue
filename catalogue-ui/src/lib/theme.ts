@@ -19,5 +19,25 @@ export function createAppTheme() {
     shape: {
       borderRadius: 8,
     },
+    components: {
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: {
+            '&:not(.Mui-error).Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderColor: 'rgba(255, 255, 255, 0.7)',
+            },
+          },
+        },
+      },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            '&:not(.Mui-error).Mui-focused': {
+              color: 'rgba(255, 255, 255, 0.7)',
+            },
+          },
+        },
+      },
+    },
   });
 }

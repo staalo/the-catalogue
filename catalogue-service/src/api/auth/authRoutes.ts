@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { config } from "../../app/config.js";
 import {
   loginUser,
   registerUser,
@@ -67,7 +68,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   // POST /userlogin
   // Body: { email, password, rememberMe? }
   app.post<{ Body: LoginBody }>("/userlogin", async (request, reply) => {
-    const { email, password } = request.body;
+    const { email, password, rememberMe } = request.body;
 
     if (!email || !password) {
       return reply
@@ -80,6 +81,9 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       request.session.userId = user.id;
       request.session.email = user.email;
       request.session.userName = user.userName;
+      if (rememberMe) {
+        request.session.cookie.maxAge = config.rememberMeTtlMs;
+      }
       return reply.send({ email: user.email });
     } catch (err) {
       if (err instanceof AppError) {
@@ -95,7 +99,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({});
   });
 
-  // GET /getcurrentuser — returns { email } for the active session user
+  // GET /getcurrentuser — returns { email, userName } for the active session user
   app.get(
     "/getcurrentuser",
     { preHandler: requireAuth },
@@ -104,11 +108,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       if (!user) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
-      return reply.send({ email: user.email });
+      return reply.send({ email: user.email, userName: user.userName });
     },
   );
 
-  // GET /pingauth — same contract as /getcurrentuser, kept for .NET parity
+  // GET /pingauth — returns { email } for the active session, kept for .NET parity
   app.get("/pingauth", { preHandler: requireAuth }, async (request, reply) => {
     return reply.send({ email: request.session.email ?? null });
   });

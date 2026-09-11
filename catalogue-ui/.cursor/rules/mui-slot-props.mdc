@@ -1,0 +1,21 @@
+---
+description: Use MUI slotProps for input refs instead of deprecated inputRef
+globs: **/*.{tsx,jsx}
+alwaysApply: false
+---
+
+# MUI input refs
+
+Do not use `inputRef` on MUI components (`Checkbox`, `TextField`, `Switch`, `Radio`, etc.). It is deprecated.
+
+Pass the ref through `slotProps.input.ref` instead, including when wiring `react-hook-form` `Controller` fields.
+
+```tsx
+// ❌ BAD
+<Checkbox inputRef={field.ref} />
+<TextField inputRef={field.ref} />
+
+// ✅ GOOD
+<Checkbox slotProps={{ input: { ref: field.ref } }} />
+<TextField slotProps={{ input: { ref: field.ref } }} />
+```
