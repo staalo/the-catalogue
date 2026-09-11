@@ -1,5 +1,10 @@
 import { apiGet, apiPost, ApiError } from '@/lib/api';
-import type { CurrentUser, LoginRequest } from '@/types';
+import type {
+  CurrentUser,
+  LoginRequest,
+  RegisterRequest,
+  RegisterResponse,
+} from '@/types';
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
@@ -13,8 +18,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   }
 }
 
-export function login(body: LoginRequest): Promise<CurrentUser> {
-  return apiPost<CurrentUser>('/userlogin', body);
+export function login(body: LoginRequest): Promise<Pick<CurrentUser, 'email'>> {
+  return apiPost<Pick<CurrentUser, 'email'>>('/userlogin', body);
+}
+
+export function register(body: RegisterRequest): Promise<RegisterResponse> {
+  return apiPost<RegisterResponse>('/register', body);
 }
 
 export function logout(): Promise<Record<string, never>> {

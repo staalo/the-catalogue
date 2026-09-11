@@ -63,6 +63,22 @@ function getCookie(response: { headers: Record<string, unknown> }): string {
   return String(first ?? "").split(";")[0] ?? "";
 }
 
+function cookieTtlMs(response: { headers: Record<string, unknown> }): number | null {
+  const raw = response.headers["set-cookie"];
+  const first = String(Array.isArray(raw) ? raw[0] : (raw ?? ""));
+  const maxAge = first.match(/Max-Age=(\d+)/i);
+  if (maxAge) {
+    return Number(maxAge[1]) * 1000;
+  }
+
+  const expires = first.match(/Expires=([^;]+)/i);
+  if (!expires?.[1]) {
+    return null;
+  }
+
+  return new Date(expires[1]).getTime() - Date.now();
+}
+
 describe("route behavior", () => {
   beforeEach(() => {
     loginUserMock.mockReset();
@@ -126,7 +142,10 @@ describe("route behavior", () => {
     });
 
     expect(meRes.statusCode).toBe(200);
-    expect(meRes.json()).toEqual({ email: "user@example.com" });
+    expect(meRes.json()).toEqual({
+      email: "user@example.com",
+      userName: "user1",
+    });
 
     const pingAuthRes = await app.inject({
       method: "GET",
@@ -136,6 +155,48 @@ describe("route behavior", () => {
 
     expect(pingAuthRes.statusCode).toBe(200);
     expect(pingAuthRes.json()).toEqual({ email: "user@example.com" });
+
+    await app.close();
+  });
+
+  it("extends the session cookie when rememberMe is true", async () => {
+    const app = await createApp();
+
+    loginUserMock.mockResolvedValue({
+      id: "u-100",
+      email: "user@example.com",
+      userName: "user1",
+    });
+
+    const remembered = await app.inject({
+      method: "POST",
+      url: "/userlogin",
+      payload: {
+        email: "user@example.com",
+        password: "secret",
+        rememberMe: true,
+      },
+    });
+
+    expect(remembered.statusCode).toBe(200);
+    const rememberedTtl = cookieTtlMs(
+      remembered as unknown as { headers: Record<string, unknown> },
+    );
+    expect(rememberedTtl).toBeGreaterThan(29 * 24 * 60 * 60 * 1000);
+    expect(rememberedTtl).toBeLessThan(30 * 24 * 60 * 60 * 1000 + 5_000);
+
+    const session = await app.inject({
+      method: "POST",
+      url: "/userlogin",
+      payload: { email: "user@example.com", password: "secret" },
+    });
+
+    expect(session.statusCode).toBe(200);
+    const sessionTtl = cookieTtlMs(
+      session as unknown as { headers: Record<string, unknown> },
+    );
+    expect(sessionTtl).toBeGreaterThan(55 * 60 * 1000);
+    expect(sessionTtl).toBeLessThan(60 * 60 * 1000 + 5_000);
 
     await app.close();
   });
@@ -180,7 +241,10 @@ describe("route behavior", () => {
     });
 
     expect(meRes.statusCode).toBe(200);
-    expect(meRes.json()).toEqual({ email: "new@example.com" });
+    expect(meRes.json()).toEqual({
+      email: "new@example.com",
+      userName: "new@example.com",
+    });
 
     await app.close();
   });

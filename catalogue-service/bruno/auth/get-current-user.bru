@@ -15,7 +15,8 @@ tests {
     expect(res.getStatus()).to.equal(200);
   });
 
-  test("response has email", function() {
+  test("response has email and userName", function() {
     expect(res.getBody()).to.have.property("email");
+    expect(res.getBody()).to.have.property("userName");
   });
 }

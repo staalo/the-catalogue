@@ -19,5 +19,7 @@ export const config = {
   mediaBootstrapUser: process.env["MEDIA_BOOTSTRAP_USER"] ?? "system",
   /** Session TTL in milliseconds — mirrors .NET's 60-minute sliding expiration */
   sessionTtlMs: 60 * 60 * 1000,
+  /** Persistent session TTL when the user checks Remember me */
+  rememberMeTtlMs: 30 * 24 * 60 * 60 * 1000,
   isDev: process.env["NODE_ENV"] !== "production",
 };
