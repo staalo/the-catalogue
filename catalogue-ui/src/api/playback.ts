@@ -10,7 +10,20 @@ type MoviePlaybackProgressResult = {
   items: MoviePlaybackProgress[];
 };
 
-const movieUpdateQueues = new Map<number, Promise<void>>();
+const movieUpdateQueues = new Map<string, Promise<void>>();
+let activePlaybackUser: string | null = null;
+let playbackSessionGeneration = 0;
+
+export function setPlaybackProgressSession(userName?: string): void {
+  const nextUser = userName ?? null;
+  if (nextUser === activePlaybackUser) {
+    return;
+  }
+
+  activePlaybackUser = nextUser;
+  playbackSessionGeneration += 1;
+  movieUpdateQueues.clear();
+}
 
 export async function getMoviePlaybackProgress(): Promise<MoviePlaybackProgress[]> {
   const result = await apiGet<MoviePlaybackProgressResult>('/api/playback/movies');
@@ -27,21 +40,36 @@ function updateMoviePlaybackProgress(
 }
 
 export function queueMoviePlaybackProgressUpdate(
+  playbackUser: string,
   movieId: number,
   progress: number,
 ): Promise<void> {
-  const previous = movieUpdateQueues.get(movieId) ?? Promise.resolve();
+  const queuedUser = activePlaybackUser;
+  if (!queuedUser || queuedUser !== playbackUser) {
+    return Promise.resolve();
+  }
+
+  const queuedGeneration = playbackSessionGeneration;
+  const queueKey = `${queuedGeneration}:${movieId}`;
+  const previous = movieUpdateQueues.get(queueKey) ?? Promise.resolve();
   const queued = previous
     .catch(() => undefined)
     .then(async () => {
+      if (
+        activePlaybackUser !== queuedUser
+        || playbackSessionGeneration !== queuedGeneration
+      ) {
+        return;
+      }
+
       await updateMoviePlaybackProgress(movieId, progress);
     });
 
-  movieUpdateQueues.set(movieId, queued);
+  movieUpdateQueues.set(queueKey, queued);
   void queued
     .finally(() => {
-      if (movieUpdateQueues.get(movieId) === queued) {
-        movieUpdateQueues.delete(movieId);
+      if (movieUpdateQueues.get(queueKey) === queued) {
+        movieUpdateQueues.delete(queueKey);
       }
     })
     .catch(() => undefined);

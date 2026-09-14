@@ -431,10 +431,15 @@ describe("route behavior", () => {
 
     expect(listRes.statusCode).toBe(200);
     expect(listRes.json()).toEqual({ items: [item] });
-    expect(getMoviePlaybackProgressMock).toHaveBeenCalledWith("u-4");
+    expect(getMoviePlaybackProgressMock).toHaveBeenCalledWith("u-4", "dana");
     expect(updateRes.statusCode).toBe(200);
     expect(updateRes.json()).toEqual(item);
-    expect(saveMoviePlaybackProgressMock).toHaveBeenCalledWith("u-4", 7, 38);
+    expect(saveMoviePlaybackProgressMock).toHaveBeenCalledWith(
+      "u-4",
+      "dana",
+      7,
+      38,
+    );
 
     await app.close();
   });

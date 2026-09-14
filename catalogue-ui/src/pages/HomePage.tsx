@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
@@ -18,6 +18,7 @@ import { useLogout } from '@/hooks/useAuth';
 import { useCatalogue } from '@/hooks/useCatalogue';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { usePlaybackProgress } from '@/hooks/usePlaybackProgress';
+import { setPlaybackProgressSession } from '@/api/playback';
 import type { Extra, Media, MediaType, PlayerTarget } from '@/types';
 
 export function HomePage() {
@@ -33,6 +34,11 @@ export function HomePage() {
   const playbackProgress = usePlaybackProgress(user?.userName);
   const logout = useLogout();
   const authenticated = Boolean(user?.email);
+
+  useEffect(() => {
+    setPlayer(null);
+  }, [user?.userName]);
+
   const { data, featured, isLoading, isError, error } = useCatalogue(
     tab,
     search,
@@ -55,6 +61,7 @@ export function HomePage() {
       subtitle: [item.year, item.meta].filter(Boolean).join('  ·  '),
       url: item.url,
       mediaId: item.id,
+      playbackUser: user?.userName,
     });
   };
 
@@ -77,6 +84,8 @@ export function HomePage() {
         onLogin={() => setLoginOpen(true)}
         onLogout={() => {
           setProfileOpen(false);
+          setPlayer(null);
+          setPlaybackProgressSession();
           void logout.mutateAsync();
         }}
         onProfile={() => setProfileOpen(true)}

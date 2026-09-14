@@ -140,4 +140,5 @@ export type PlayerTarget = {
   subtitle: string;
   url: string;
   mediaId?: number;
+  playbackUser?: string;
 };

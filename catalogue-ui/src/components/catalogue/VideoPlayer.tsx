@@ -11,6 +11,7 @@ import { useWatchProgressStore } from '@/stores/useWatchProgressStore';
 type VideoPlayerProps = {
   src: string;
   mediaId?: number;
+  playbackUser?: string;
 };
 
 type TrackOption = {
@@ -228,7 +229,7 @@ function AudioTrackOverlay({
   );
 }
 
-export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
+export function VideoPlayer({ src, mediaId, playbackUser }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastQueuedProgressRef = useRef<number | undefined>(undefined);
   const [hlsEngine, setHlsEngine] = useState<Hls | null>(null);
@@ -260,7 +261,7 @@ export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
     }
 
     const recordProgress = (force: boolean) => {
-      if (!mediaId) {
+      if (!mediaId || !playbackUser) {
         return;
       }
 
@@ -284,7 +285,7 @@ export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
         }
 
         lastQueuedProgressRef.current = rounded;
-        void queueMoviePlaybackProgressUpdate(mediaId, rounded)
+        void queueMoviePlaybackProgressUpdate(playbackUser, mediaId, rounded)
           .catch(() => {
             if (lastQueuedProgressRef.current === rounded) {
               lastQueuedProgressRef.current = undefined;
@@ -322,7 +323,7 @@ export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
       video.removeAttribute('src');
       video.load();
     };
-  }, [src, mediaId, setProgress]);
+  }, [src, mediaId, playbackUser, setProgress]);
 
   return (
     <Box sx={{ position: 'relative', width: '100%' }}>

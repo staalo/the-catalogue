@@ -23,7 +23,12 @@ export async function playbackRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(401).send({ error: "Unauthorized" });
       }
 
-      return reply.send(getMoviePlaybackProgress(userId));
+      const userName = request.session.userName ?? request.session.email;
+      if (!userName) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+
+      return reply.send(getMoviePlaybackProgress(userId, userName));
     },
   );
 
@@ -33,6 +38,11 @@ export async function playbackRoutes(app: FastifyInstance): Promise<void> {
     async (request, reply) => {
       const userId = request.session.userId;
       if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+
+      const userName = request.session.userName ?? request.session.email;
+      if (!userName) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
 
@@ -49,7 +59,12 @@ export async function playbackRoutes(app: FastifyInstance): Promise<void> {
           .send({ error: "Progress must be a finite number." });
       }
 
-      const result = await saveMoviePlaybackProgress(userId, movieId, progress);
+      const result = await saveMoviePlaybackProgress(
+        userId,
+        userName,
+        movieId,
+        progress,
+      );
 
       return reply.send(result);
     },

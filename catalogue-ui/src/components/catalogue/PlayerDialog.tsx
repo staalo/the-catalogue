@@ -29,7 +29,12 @@ export function PlayerDialog({ target, onClose }: PlayerDialogProps) {
       <DialogContent sx={{ p: { xs: 1, sm: 2 } }}>
         <Stack spacing={1.5}>
           {target?.url ? (
-            <VideoPlayer key={target.url} src={target.url} mediaId={target.mediaId} />
+            <VideoPlayer
+              key={target.url}
+              src={target.url}
+              mediaId={target.mediaId}
+              playbackUser={target.playbackUser}
+            />
           ) : null}
           <Stack direction="row" alignItems="center" justifyContent="space-between">
             <Box>

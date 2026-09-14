@@ -1,6 +1,6 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, like, sql } from "drizzle-orm";
 import { db } from "../client.js";
-import { playbackProgress } from "../schema.js";
+import { localMovies, playbackProgress } from "../schema.js";
 
 export interface MoviePlaybackProgress {
   movieId: number;
@@ -10,7 +10,10 @@ export interface MoviePlaybackProgress {
 
 export function listMoviePlaybackProgress(
   userId: string,
+  moviesPath: string,
 ): MoviePlaybackProgress[] {
+  const normalizedPath = moviesPath.replace(/\\/g, "/").replace(/\/?$/, "/");
+
   return db
     .select({
       movieId: playbackProgress.localMovieId,
@@ -18,7 +21,16 @@ export function listMoviePlaybackProgress(
       updatedAt: playbackProgress.updatedAt,
     })
     .from(playbackProgress)
-    .where(eq(playbackProgress.userId, userId))
+    .innerJoin(
+      localMovies,
+      eq(playbackProgress.localMovieId, localMovies.id),
+    )
+    .where(
+      and(
+        eq(playbackProgress.userId, userId),
+        like(localMovies.url, `${normalizedPath}%`),
+      ),
+    )
     .orderBy(desc(playbackProgress.updatedAt))
     .all();
 }

@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getMoviePlaybackProgress } from "@/api/playback";
+import {
+  getMoviePlaybackProgress,
+  setPlaybackProgressSession,
+} from "@/api/playback";
 import { useWatchProgressStore } from "@/stores/useWatchProgressStore";
 
 export function usePlaybackProgress(userName?: string) {
@@ -18,6 +21,7 @@ export function usePlaybackProgress(userName?: string) {
   });
 
   useEffect(() => {
+    setPlaybackProgressSession(userName);
     resetProgress();
   }, [userName, resetProgress]);
 
