@@ -1,4 +1,6 @@
 import "dotenv/config";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const sessionSecret = process.env["SESSION_SECRET"] ?? "";
 
@@ -17,6 +19,9 @@ export const config = {
   defaultTvPath:
     process.env["TV_PATH"] ?? process.env["MEDIA_TV_PATH"] ?? null,
   mediaBootstrapUser: process.env["MEDIA_BOOTSTRAP_USER"] ?? "system",
+  publicDir:
+    process.env["PUBLIC_DIR"] ??
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../public"),
   /** Session TTL in milliseconds — mirrors .NET's 60-minute sliding expiration */
   sessionTtlMs: 60 * 60 * 1000,
   /** Persistent session TTL when the user checks Remember me */
