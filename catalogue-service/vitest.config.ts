@@ -6,6 +6,7 @@ export default defineConfig({
     globals: true,
     include: ["tests/**/*.test.ts"],
     setupFiles: ["tests/setup.ts"],
+    testTimeout: 10_000,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

@@ -11,6 +11,7 @@ import { registerSearchRoutes } from "../api/search/searchRoutes.js";
 import { registerStreamRoutes } from "../api/stream/streamRoutes.js";
 import { registerMediaPathRoutes } from "../api/media/mediaPathRoutes.js";
 import { registerMediaWatcherRoutes } from "../api/admin/mediaWatcherRoutes.js";
+import { playbackRoutes } from "../api/playback/playbackRoutes.js";
 import { AppError } from "../shared/errors/AppError.js";
 import { skipUnmodifiedSessionSave } from "../modules/auth/middleware.js";
 import {
@@ -96,6 +97,7 @@ export async function buildServer() {
   await app.register(registerStreamRoutes);
   await app.register(registerMediaPathRoutes);
   await app.register(registerMediaWatcherRoutes);
+  await app.register(playbackRoutes);
 
   const publicDir = resolvePublicDir(config.publicDir);
   if (publicDir) {

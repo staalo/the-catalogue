@@ -5,6 +5,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import Typography from '@mui/material/Typography';
 import Hls from 'hls.js';
+import { updateMoviePlaybackProgress } from '@/api/playback';
 import { useWatchProgressStore } from '@/stores/useWatchProgressStore';
 
 type VideoPlayerProps = {
@@ -229,6 +230,8 @@ function AudioTrackOverlay({
 
 export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const lastQueuedProgressRef = useRef<number | undefined>(undefined);
+  const writeChainRef = useRef<Promise<void>>(Promise.resolve());
   const [hlsEngine, setHlsEngine] = useState<Hls | null>(null);
   const setProgress = useWatchProgressStore((state) => state.setProgress);
 
@@ -241,6 +244,7 @@ export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
 
     const isHls = src.includes('.m3u8');
     let hls: Hls | undefined;
+    lastQueuedProgressRef.current = undefined;
 
     if (isHls && Hls.isSupported()) {
       hls = new Hls({
@@ -256,7 +260,7 @@ export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
       setHlsEngine(null);
     }
 
-    const saveProgress = () => {
+    const recordProgress = (force: boolean) => {
       if (!mediaId) {
         return;
       }
@@ -264,8 +268,37 @@ export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
       const percent = playbackPercent(video);
       if (percent !== null) {
         setProgress(mediaId, percent);
+
+        const rounded = Math.min(100, Math.max(0, Math.round(percent)));
+        const lastQueued = lastQueuedProgressRef.current;
+        if (
+          !force
+          && lastQueued !== undefined
+          && rounded < 100
+          && Math.abs(rounded - lastQueued) < 2
+        ) {
+          return;
+        }
+
+        if (lastQueued === rounded) {
+          return;
+        }
+
+        lastQueuedProgressRef.current = rounded;
+        writeChainRef.current = writeChainRef.current
+          .then(async () => {
+            await updateMoviePlaybackProgress(mediaId, rounded);
+          })
+          .catch(() => {
+            if (lastQueuedProgressRef.current === rounded) {
+              lastQueuedProgressRef.current = undefined;
+            }
+          });
       }
     };
+
+    const saveProgress = () => recordProgress(false);
+    const flushProgress = () => recordProgress(true);
 
     const resumeProgress = () => {
       if (!mediaId || !Number.isFinite(video.duration) || video.duration <= 0) {
@@ -273,6 +306,7 @@ export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
       }
 
       const saved = useWatchProgressStore.getState().progressById[mediaId];
+      lastQueuedProgressRef.current = saved;
       if (saved && saved > 2 && saved < 95) {
         video.currentTime = (saved / 100) * video.duration;
       }
@@ -280,13 +314,13 @@ export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
 
     video.addEventListener('loadedmetadata', resumeProgress);
     video.addEventListener('timeupdate', saveProgress);
-    video.addEventListener('pause', saveProgress);
+    video.addEventListener('pause', flushProgress);
 
     return () => {
-      saveProgress();
+      flushProgress();
       video.removeEventListener('loadedmetadata', resumeProgress);
       video.removeEventListener('timeupdate', saveProgress);
-      video.removeEventListener('pause', saveProgress);
+      video.removeEventListener('pause', flushProgress);
       setHlsEngine(null);
       hls?.destroy();
       video.removeAttribute('src');

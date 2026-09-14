@@ -55,6 +55,22 @@ sqlite.exec(`
 		has_extras INTEGER NOT NULL DEFAULT 0
 	);
 
+	CREATE TABLE IF NOT EXISTS playback_progress (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id TEXT NOT NULL,
+		local_movie_id INTEGER NOT NULL,
+		progress_percent REAL NOT NULL DEFAULT 0,
+		updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+		FOREIGN KEY(local_movie_id) REFERENCES local_movies(id) ON DELETE CASCADE
+	);
+
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_playback_progress_user_movie
+	ON playback_progress (user_id, local_movie_id);
+
+	CREATE INDEX IF NOT EXISTS idx_playback_progress_user_updated
+	ON playback_progress (user_id, updated_at);
+
 	CREATE TABLE IF NOT EXISTS local_movie_cast (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		local_movie_id INTEGER NOT NULL,

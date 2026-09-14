@@ -7,6 +7,8 @@ const loginUserMock = vi.fn();
 const resolveSessionMock = vi.fn();
 const registerUserMock = vi.fn();
 const browseMoviesMock = vi.fn();
+const getMoviePlaybackProgressMock = vi.fn();
+const saveMoviePlaybackProgressMock = vi.fn();
 
 vi.mock("../../src/modules/auth/authService.js", () => ({
   loginUser: loginUserMock,
@@ -16,6 +18,11 @@ vi.mock("../../src/modules/auth/authService.js", () => ({
 
 vi.mock("../../src/modules/browse/browseService.js", () => ({
   browseMovies: browseMoviesMock,
+}));
+
+vi.mock("../../src/modules/playback/playbackProgressService.js", () => ({
+  getMoviePlaybackProgress: getMoviePlaybackProgressMock,
+  saveMoviePlaybackProgress: saveMoviePlaybackProgressMock,
 }));
 
 async function createApp() {
@@ -36,6 +43,8 @@ async function createApp() {
   const { healthRoutes } = await import("../../src/api/health/healthRoutes.js");
   const { authRoutes } = await import("../../src/api/auth/authRoutes.js");
   const { browseRoutes } = await import("../../src/api/browse/browseRoutes.js");
+  const { playbackRoutes } =
+    await import("../../src/api/playback/playbackRoutes.js");
 
   await app.register(healthRoutes);
   await app.register(authRoutes);
@@ -54,6 +63,7 @@ async function createApp() {
   });
 
   await app.register(browseRoutes);
+  await app.register(playbackRoutes);
   return app;
 }
 
@@ -85,6 +95,8 @@ describe("route behavior", () => {
     resolveSessionMock.mockReset();
     registerUserMock.mockReset();
     browseMoviesMock.mockReset();
+    getMoviePlaybackProgressMock.mockReset();
+    saveMoviePlaybackProgressMock.mockReset();
   });
 
   it("returns ping response", async () => {
@@ -369,6 +381,87 @@ describe("route behavior", () => {
       totalPages: 1,
       totalResults: 1,
     });
+
+    await app.close();
+  });
+
+  it("rejects playback progress without a session", async () => {
+    const app = await createApp();
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/playback/movies",
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toEqual({ error: "Unauthorized" });
+
+    await app.close();
+  });
+
+  it("lists and updates playback progress for the authenticated user", async () => {
+    const app = await createApp();
+    const sessionRes = await app.inject({
+      method: "POST",
+      url: "/test/session",
+      payload: { userId: "u-4", userName: "dana" },
+    });
+    const cookie = getCookie(
+      sessionRes as unknown as { headers: Record<string, unknown> },
+    );
+    const item = {
+      movieId: 7,
+      progress: 38,
+      updatedAt: "2026-09-14 08:00:00",
+    };
+    getMoviePlaybackProgressMock.mockReturnValueOnce({ items: [item] });
+    saveMoviePlaybackProgressMock.mockResolvedValueOnce(item);
+
+    const listRes = await app.inject({
+      method: "GET",
+      url: "/api/playback/movies",
+      headers: { cookie },
+    });
+    const updateRes = await app.inject({
+      method: "PUT",
+      url: "/api/playback/movies/7",
+      headers: { cookie },
+      payload: { progress: 38 },
+    });
+
+    expect(listRes.statusCode).toBe(200);
+    expect(listRes.json()).toEqual({ items: [item] });
+    expect(getMoviePlaybackProgressMock).toHaveBeenCalledWith("u-4");
+    expect(updateRes.statusCode).toBe(200);
+    expect(updateRes.json()).toEqual(item);
+    expect(saveMoviePlaybackProgressMock).toHaveBeenCalledWith("u-4", 7, 38);
+
+    await app.close();
+  });
+
+  it("rejects malformed playback progress payloads", async () => {
+    const app = await createApp();
+    const sessionRes = await app.inject({
+      method: "POST",
+      url: "/test/session",
+      payload: { userId: "u-5", userName: "erin" },
+    });
+    const cookie = getCookie(
+      sessionRes as unknown as { headers: Record<string, unknown> },
+    );
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/playback/movies/7",
+      headers: { cookie },
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({
+      error: "Progress must be a finite number.",
+    });
+    expect(saveMoviePlaybackProgressMock).not.toHaveBeenCalled();
 
     await app.close();
   });
