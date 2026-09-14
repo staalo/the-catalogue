@@ -5,7 +5,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import Typography from '@mui/material/Typography';
 import Hls from 'hls.js';
-import { updateMoviePlaybackProgress } from '@/api/playback';
+import { queueMoviePlaybackProgressUpdate } from '@/api/playback';
 import { useWatchProgressStore } from '@/stores/useWatchProgressStore';
 
 type VideoPlayerProps = {
@@ -231,7 +231,6 @@ function AudioTrackOverlay({
 export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastQueuedProgressRef = useRef<number | undefined>(undefined);
-  const writeChainRef = useRef<Promise<void>>(Promise.resolve());
   const [hlsEngine, setHlsEngine] = useState<Hls | null>(null);
   const setProgress = useWatchProgressStore((state) => state.setProgress);
 
@@ -285,10 +284,7 @@ export function VideoPlayer({ src, mediaId }: VideoPlayerProps) {
         }
 
         lastQueuedProgressRef.current = rounded;
-        writeChainRef.current = writeChainRef.current
-          .then(async () => {
-            await updateMoviePlaybackProgress(mediaId, rounded);
-          })
+        void queueMoviePlaybackProgressUpdate(mediaId, rounded)
           .catch(() => {
             if (lastQueuedProgressRef.current === rounded) {
               lastQueuedProgressRef.current = undefined;
