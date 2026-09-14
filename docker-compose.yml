@@ -1,0 +1,40 @@
+services:
+  catalogue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: catalogue:latest
+    init: true
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./catalogue-service/.env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: /data/catalog.db
+      PUBLIC_DIR: /app/public
+      MOVIES_PATH: /media/movies
+      TV_PATH: /media/tv
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - catalogue-data:/data
+      - ${MOVIES_HOST_PATH:-C:/temp/leffat}:/media/movies:ro
+      # Uncomment and set TV_HOST_PATH in a root .env if you also have a TV library:
+      # - ${TV_HOST_PATH}:/media/tv:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/ping').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  catalogue-data:

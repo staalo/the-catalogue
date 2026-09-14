@@ -3,6 +3,7 @@ import fastifyCookie from "@fastify/cookie";
 import fastifySession from "@fastify/session";
 import fastifyCors from "@fastify/cors";
 import { config } from "./config.js";
+import { registerUiStatic, resolvePublicDir } from "./uiStatic.js";
 import { authRoutes } from "../api/auth/authRoutes.js";
 import { healthRoutes } from "../api/health/healthRoutes.js";
 import { browseRoutes } from "../api/browse/browseRoutes.js";
@@ -95,6 +96,11 @@ export async function buildServer() {
   await app.register(registerStreamRoutes);
   await app.register(registerMediaPathRoutes);
   await app.register(registerMediaWatcherRoutes);
+
+  const publicDir = resolvePublicDir(config.publicDir);
+  if (publicDir) {
+    await registerUiStatic(app, publicDir);
+  }
 
   try {
     await setupFileWatchers();
