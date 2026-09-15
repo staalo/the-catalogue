@@ -49,7 +49,10 @@ describe("registerUiStatic", () => {
       "<!doctype html><title>Catalogue</title>",
     );
     await mkdir(path.join(publicDir, "assets"));
-    await writeFile(path.join(publicDir, "assets", "app.js"), "console.log(1);");
+    await writeFile(
+      path.join(publicDir, "assets", "app.js"),
+      "console.log(1);",
+    );
 
     const app = Fastify();
     app.get("/ping", async () => "Ping OK!");

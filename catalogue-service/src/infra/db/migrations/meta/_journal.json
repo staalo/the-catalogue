@@ -15,6 +15,13 @@
       "when": 1788984689900,
       "tag": "0001_scan_status",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789375767863,
+      "tag": "0002_calm_jack_power",
+      "breakpoints": true
     }
   ]
 }

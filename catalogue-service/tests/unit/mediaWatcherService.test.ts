@@ -22,6 +22,9 @@ const state = vi.hoisted(() => {
     insertDiscoveredMovieMock: vi.fn<
       (movie: Record<string, unknown>) => number
     >(() => 1),
+    refreshDiscoveredMovieMock: vi.fn<
+      (movie: Record<string, unknown>) => number
+    >(() => 1),
     insertMovieExtrasMock:
       vi.fn<
         (
@@ -30,7 +33,9 @@ const state = vi.hoisted(() => {
         ) => void
       >(),
     deleteMoviesByUrlsMock: vi.fn<(urls: string[]) => number>(),
-    searchMovieOnTmdbMock: vi.fn(async () => null),
+    searchMovieOnTmdbMock: vi.fn<
+      typeof import("../../src/modules/tmdb/tmdbClientService.js").searchMovieOnTmdb
+    >(async () => null),
     insertMovieCastMock: vi.fn(),
     insertMovieCrewMock: vi.fn(),
   };
@@ -84,6 +89,7 @@ vi.mock("../../src/infra/db/repositories/mediaWatcherRepository.js", () => ({
   movieExistsByUrl: state.movieExistsByUrlMock,
   isMissingTmdbMetadata: state.isMissingTmdbMetadataMock,
   insertDiscoveredMovie: state.insertDiscoveredMovieMock,
+  refreshDiscoveredMovie: state.refreshDiscoveredMovieMock,
   insertMovieExtras: state.insertMovieExtrasMock,
   insertMovieCast: state.insertMovieCastMock,
   insertMovieCrew: state.insertMovieCrewMock,
@@ -92,18 +98,21 @@ vi.mock("../../src/infra/db/repositories/mediaWatcherRepository.js", () => ({
   deleteMoviesByUrls: state.deleteMoviesByUrlsMock,
 }));
 
-vi.mock("../../src/modules/tmdb/tmdbClientService.js", async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import("../../src/modules/tmdb/tmdbClientService.js")
-    >();
-  return {
-    ...actual,
-    searchMovieOnTmdb: state.searchMovieOnTmdbMock,
-    extractTitleFromFilename: vi.fn((name: string) => name),
-    extractYearFromFilename: vi.fn(() => undefined),
-  };
-});
+vi.mock(
+  "../../src/modules/tmdb/tmdbClientService.js",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("../../src/modules/tmdb/tmdbClientService.js")
+      >();
+    return {
+      ...actual,
+      searchMovieOnTmdb: state.searchMovieOnTmdbMock,
+      extractTitleFromFilename: vi.fn((name: string) => name),
+      extractYearFromFilename: vi.fn(() => undefined),
+    };
+  },
+);
 
 describe("mediaWatcherService delete cleanup", () => {
   beforeEach(() => {
@@ -120,6 +129,7 @@ describe("mediaWatcherService delete cleanup", () => {
     state.movieExistsByUrlMock.mockReset();
     state.isMissingTmdbMetadataMock.mockReset();
     state.insertDiscoveredMovieMock.mockReset();
+    state.refreshDiscoveredMovieMock.mockReset();
     state.insertMovieExtrasMock.mockReset();
     state.deleteMoviesByUrlsMock.mockReset();
     state.searchMovieOnTmdbMock.mockReset();
@@ -128,13 +138,13 @@ describe("mediaWatcherService delete cleanup", () => {
 
     state.movieExistsByUrlMock.mockReturnValue(false);
     state.isMissingTmdbMetadataMock.mockReturnValue(false);
+    state.insertDiscoveredMovieMock.mockReturnValue(1);
+    state.refreshDiscoveredMovieMock.mockReturnValue(1);
     state.searchMovieOnTmdbMock.mockResolvedValue(null);
     state.createScanRecordMock.mockReturnValue({ id: 1 });
   });
 
-  it(
-    "deletes matching movie URL candidates when metadata json is removed",
-    async () => {
+  it("deletes matching movie URL candidates when metadata json is removed", async () => {
     state.localMediaRows = [
       { userName: "alice", moviesPath: "D:/media/movies", tvPath: null },
     ];
@@ -158,9 +168,7 @@ describe("mediaWatcherService delete cleanup", () => {
     expect(urls).toContain("D:/media/movies/Sub/Foo.m3u8");
     expect(urls).toContain("D:/media/movies/Sub/Foo.ts");
     expect(urls).toHaveLength(9);
-    },
-    15000,
-  );
+  }, 15000);
 
   it("closes active watchers on stopAllWatchers", async () => {
     state.localMediaRows = [
@@ -336,11 +344,15 @@ describe("mediaWatcherService delete cleanup", () => {
 
     await addHandler("C:/temp/leffat/big-fish.json");
 
-    expect(state.deleteMoviesByUrlsMock).toHaveBeenCalledWith([
-      "C:/temp/leffat/Big Fish/master.m3u8",
-    ]);
     expect(state.searchMovieOnTmdbMock).toHaveBeenCalledWith("Big Fish", 2003);
-    expect(state.insertDiscoveredMovieMock).toHaveBeenCalledTimes(1);
+    expect(state.refreshDiscoveredMovieMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Big Fish",
+        url: "C:/temp/leffat/Big Fish/master.m3u8",
+      }),
+    );
+    expect(state.insertDiscoveredMovieMock).not.toHaveBeenCalled();
+    expect(state.deleteMoviesByUrlsMock).not.toHaveBeenCalled();
   });
 
   it("maps TMDB snake_case cast fields onto local columns", async () => {
@@ -363,6 +375,7 @@ describe("mediaWatcherService delete cleanup", () => {
       }),
     );
     state.searchMovieOnTmdbMock.mockResolvedValue({
+      id: 11,
       title: "Star Wars",
       credits: {
         cast: [

@@ -31,6 +31,48 @@ export interface ScanStatusRecord {
   createdAt: string;
 }
 
+export interface DiscoveredMovieData {
+  title: string;
+  originalTitle?: string;
+  overview?: string;
+  url: string;
+  releaseDate?: string;
+  runtime?: number;
+  adult?: boolean;
+  popularity?: number;
+  voteAverage?: number;
+  voteCount?: number;
+  posterPath?: string;
+  backdropPath?: string;
+  homepage?: string;
+  imdbId?: string;
+  originalLanguage?: string;
+  tagline?: string;
+  hasExtras?: boolean;
+}
+
+function toMovieValues(movieData: DiscoveredMovieData) {
+  return {
+    title: movieData.title,
+    originalTitle: movieData.originalTitle ?? null,
+    overview: movieData.overview ?? null,
+    url: movieData.url,
+    releaseDate: movieData.releaseDate ?? null,
+    runtime: movieData.runtime ?? 0,
+    adult: movieData.adult ?? false,
+    popularity: movieData.popularity ?? 0,
+    voteAverage: movieData.voteAverage ?? 0,
+    voteCount: movieData.voteCount ?? 0,
+    posterPath: movieData.posterPath ?? null,
+    backdropPath: movieData.backdropPath ?? null,
+    homepage: movieData.homepage ?? null,
+    imdbId: movieData.imdbId ?? null,
+    originalLanguage: movieData.originalLanguage ?? null,
+    tagline: movieData.tagline ?? null,
+    hasExtras: movieData.hasExtras ?? false,
+  };
+}
+
 /**
  * Create a new scan status record to track progress.
  */
@@ -173,50 +215,58 @@ export function deleteMoviesByUrls(urls: string[]): number {
  * Insert a discovered movie into the database.
  * Returns the inserted movie record with ID.
  */
-export function insertDiscoveredMovie(movieData: {
-  title: string;
-  originalTitle?: string;
-  overview?: string;
-  url: string;
-  releaseDate?: string;
-  runtime?: number;
-  adult?: boolean;
-  popularity?: number;
-  voteAverage?: number;
-  voteCount?: number;
-  posterPath?: string;
-  backdropPath?: string;
-  homepage?: string;
-  imdbId?: string;
-  originalLanguage?: string;
-  tagline?: string;
-  hasExtras?: boolean;
-}): number {
+export function insertDiscoveredMovie(movieData: DiscoveredMovieData): number {
   const record = db
     .insert(localMovies)
-    .values({
-      title: movieData.title,
-      originalTitle: movieData.originalTitle,
-      overview: movieData.overview,
-      url: movieData.url,
-      releaseDate: movieData.releaseDate,
-      runtime: movieData.runtime || 0,
-      adult: movieData.adult || false,
-      popularity: movieData.popularity || 0,
-      voteAverage: movieData.voteAverage || 0,
-      voteCount: movieData.voteCount || 0,
-      posterPath: movieData.posterPath,
-      backdropPath: movieData.backdropPath,
-      homepage: movieData.homepage,
-      imdbId: movieData.imdbId,
-      originalLanguage: movieData.originalLanguage,
-      tagline: movieData.tagline,
-      hasExtras: movieData.hasExtras || false,
-    })
+    .values(toMovieValues(movieData))
     .returning({ id: localMovies.id })
     .get();
 
   return (record as { id: number }).id;
+}
+
+/**
+ * Refresh a movie and its metadata relations without replacing the movie row.
+ * Keeping the stable movie ID preserves playback_progress references.
+ */
+export function refreshDiscoveredMovie(
+  movieData: DiscoveredMovieData,
+): number {
+  return db.transaction((tx) => {
+    const existing = tx
+      .select({ id: localMovies.id })
+      .from(localMovies)
+      .where(eq(localMovies.url, movieData.url))
+      .limit(1)
+      .get();
+
+    if (!existing) {
+      throw new Error(`Movie not found for metadata refresh: ${movieData.url}`);
+    }
+
+    const movieId = existing.id;
+    tx.delete(localMovieCast)
+      .where(eq(localMovieCast.localMovieId, movieId))
+      .run();
+    tx.delete(localMovieCrew)
+      .where(eq(localMovieCrew.localMovieId, movieId))
+      .run();
+    tx.delete(localMovieGenres)
+      .where(eq(localMovieGenres.localMovieId, movieId))
+      .run();
+    tx.delete(localMovieExtras)
+      .where(eq(localMovieExtras.localMovieId, movieId))
+      .run();
+    tx.delete(localMovieTrailers)
+      .where(eq(localMovieTrailers.localMovieId, movieId))
+      .run();
+    tx.update(localMovies)
+      .set(toMovieValues(movieData))
+      .where(eq(localMovies.id, movieId))
+      .run();
+
+    return movieId;
+  });
 }
 
 /**

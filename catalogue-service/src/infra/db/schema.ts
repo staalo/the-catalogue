@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 // ---------------------------------------------------------------------------
 // Users — replaces ASP.NET Identity AspNetUsers.
@@ -54,6 +54,22 @@ export const localMovies = sqliteTable('local_movies', {
   url:              text('url').notNull(),
   hasExtras:        integer('has_extras', { mode: 'boolean' }).notNull().default(false),
 });
+
+// ---------------------------------------------------------------------------
+// PlaybackProgress — per-user movie resume state shared across devices.
+// ---------------------------------------------------------------------------
+export const playbackProgress = sqliteTable('playback_progress', {
+  id:              integer('id').primaryKey({ autoIncrement: true }),
+  userId:          text('user_id').notNull()
+                     .references(() => users.id, { onDelete: 'cascade' }),
+  localMovieId:    integer('local_movie_id').notNull()
+                     .references(() => localMovies.id, { onDelete: 'cascade' }),
+  progressPercent: real('progress_percent').notNull().default(0),
+  updatedAt:       text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (t) => [
+  uniqueIndex('idx_playback_progress_user_movie').on(t.userId, t.localMovieId),
+  index('idx_playback_progress_user_updated').on(t.userId, t.updatedAt),
+]);
 
 // ---------------------------------------------------------------------------
 // LocalMovieCast — mirrors LocalMovieCastDb.cs.

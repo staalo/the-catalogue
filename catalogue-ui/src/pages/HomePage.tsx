@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
@@ -17,6 +18,8 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { useLogout } from '@/hooks/useAuth';
 import { useCatalogue } from '@/hooks/useCatalogue';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { usePlaybackProgress } from '@/hooks/usePlaybackProgress';
+import { waitForPlaybackProgressUpdates } from '@/api/playback';
 import type { Extra, Media, MediaType, PlayerTarget } from '@/types';
 
 export function HomePage() {
@@ -29,13 +32,21 @@ export function HomePage() {
   const [search, setSearch] = useState('');
 
   const { data: user } = useCurrentUser();
+  const playbackProgress = usePlaybackProgress(user?.userName);
   const logout = useLogout();
   const authenticated = Boolean(user?.email);
+
+  useEffect(() => {
+    setPlayer(null);
+    setSelected(null);
+  }, [user?.userName]);
+
   const { data, featured, isLoading, isError, error } = useCatalogue(
     tab,
     search,
-    authenticated,
+    user?.userName,
   );
+  const catalogueLoading = isLoading || !playbackProgress.isHydrated;
 
   const continueWatching = useMemo(
     () => data.filter((item) => item.progress && item.progress < 95),
@@ -52,6 +63,7 @@ export function HomePage() {
       subtitle: [item.year, item.meta].filter(Boolean).join('  ·  '),
       url: item.url,
       mediaId: item.id,
+      playbackUser: user?.userName,
     });
   };
 
@@ -73,13 +85,19 @@ export function HomePage() {
         email={user?.email}
         onLogin={() => setLoginOpen(true)}
         onLogout={() => {
-          setProfileOpen(false);
-          void logout.mutateAsync();
+          const playbackUser = user?.userName;
+          flushSync(() => {
+            setProfileOpen(false);
+            setPlayer(null);
+          });
+          void waitForPlaybackProgressUpdates(playbackUser).then(() => {
+            logout.mutate();
+          });
         }}
         onProfile={() => setProfileOpen(true)}
       />
       <Hero
-        featured={authenticated ? featured : null}
+        featured={authenticated && !catalogueLoading ? featured : null}
         tab={tab}
         onPlay={playMedia}
         onMoreInfo={setSelected}
@@ -107,13 +125,18 @@ export function HomePage() {
           <Tab value="tv" label="TV series" />
         </Tabs>
         {!authenticated ? <SignInPrompt onLogin={() => setLoginOpen(true)} /> : null}
-        {authenticated && isLoading ? <LinearProgress /> : null}
+        {authenticated && catalogueLoading ? <LinearProgress /> : null}
         {authenticated && isError ? (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error instanceof Error ? error.message : 'Unable to load the catalogue'}
           </Alert>
         ) : null}
-        {authenticated && !isLoading ? (
+        {authenticated && playbackProgress.isError ? (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            Playback progress could not be synchronized.
+          </Alert>
+        ) : null}
+        {authenticated && !catalogueLoading ? (
           <>
             <Rail
               title="Continue watching"

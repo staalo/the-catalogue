@@ -1,0 +1,32 @@
+meta {
+  name: Update movie playback progress
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/playback/movies/1
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "progress": 37
+  }
+}
+
+tests {
+  test("status is 200 or movie is not found", function() {
+    expect([200, 404]).to.include(res.getStatus());
+  });
+
+  test("successful response contains normalized progress", function() {
+    if (res.getStatus() === 200) {
+      const body = res.getBody();
+      expect(body.movieId).to.equal(1);
+      expect(body.progress).to.equal(37);
+      expect(body).to.have.property("updatedAt");
+    }
+  });
+}

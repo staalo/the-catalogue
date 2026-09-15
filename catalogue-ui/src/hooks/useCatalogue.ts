@@ -13,20 +13,24 @@ function withLocalProgress(
   });
 }
 
-export function useCatalogue(type: MediaType, search: string, enabled: boolean) {
+export function useCatalogue(
+  type: MediaType,
+  search: string,
+  userName?: string,
+) {
   const trimmedSearch = search.trim();
   const isSearching = trimmedSearch.length > 0;
-  const canFetchMovies = enabled && type === 'movie';
+  const canFetchMovies = Boolean(userName) && type === 'movie';
   const progressById = useWatchProgressStore((state) => state.progressById);
 
   const browseQuery = useQuery({
-    queryKey: ['catalogue', 'browse', type],
+    queryKey: ['catalogue', 'browse', userName, type],
     queryFn: () => browseMovies(),
     enabled: canFetchMovies,
   });
 
   const searchQuery = useQuery({
-    queryKey: ['catalogue', 'search', type, trimmedSearch],
+    queryKey: ['catalogue', 'search', userName, type, trimmedSearch],
     queryFn: () => searchMovies(trimmedSearch),
     enabled: canFetchMovies && isSearching,
   });
