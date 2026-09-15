@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { MoviePlaybackProgress } from '@/api/playback';
 
+const LEGACY_PROGRESS_KEY = 'catalogue-watch-progress';
+
 type WatchProgressState = {
   progressById: Record<number, number>;
   hydratedFor: string | null;
@@ -11,6 +13,16 @@ type WatchProgressState = {
 
 function clampPercent(percent: number): number {
   return Math.min(100, Math.max(0, Math.round(percent)));
+}
+
+export function clearLegacyWatchProgress(): void {
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.removeItem(LEGACY_PROGRESS_KEY);
+    } catch {
+      // Storage can be disabled; the legacy data is never read or uploaded.
+    }
+  }
 }
 
 export const useWatchProgressStore = create<WatchProgressState>()((set) => ({

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
@@ -18,7 +19,7 @@ import { useLogout } from '@/hooks/useAuth';
 import { useCatalogue } from '@/hooks/useCatalogue';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { usePlaybackProgress } from '@/hooks/usePlaybackProgress';
-import { setPlaybackProgressSession } from '@/api/playback';
+import { waitForPlaybackProgressUpdates } from '@/api/playback';
 import type { Extra, Media, MediaType, PlayerTarget } from '@/types';
 
 export function HomePage() {
@@ -37,12 +38,13 @@ export function HomePage() {
 
   useEffect(() => {
     setPlayer(null);
+    setSelected(null);
   }, [user?.userName]);
 
   const { data, featured, isLoading, isError, error } = useCatalogue(
     tab,
     search,
-    authenticated,
+    user?.userName,
   );
   const catalogueLoading = isLoading || !playbackProgress.isHydrated;
 
@@ -83,15 +85,19 @@ export function HomePage() {
         email={user?.email}
         onLogin={() => setLoginOpen(true)}
         onLogout={() => {
-          setProfileOpen(false);
-          setPlayer(null);
-          setPlaybackProgressSession();
-          void logout.mutateAsync();
+          const playbackUser = user?.userName;
+          flushSync(() => {
+            setProfileOpen(false);
+            setPlayer(null);
+          });
+          void waitForPlaybackProgressUpdates(playbackUser).then(() => {
+            logout.mutate();
+          });
         }}
         onProfile={() => setProfileOpen(true)}
       />
       <Hero
-        featured={authenticated ? featured : null}
+        featured={authenticated && !catalogueLoading ? featured : null}
         tab={tab}
         onPlay={playMedia}
         onMoreInfo={setSelected}

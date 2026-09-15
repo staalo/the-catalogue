@@ -312,12 +312,14 @@ export function VideoPlayer({ src, mediaId, playbackUser }: VideoPlayerProps) {
     video.addEventListener('loadedmetadata', resumeProgress);
     video.addEventListener('timeupdate', saveProgress);
     video.addEventListener('pause', flushProgress);
+    window.addEventListener('pagehide', flushProgress);
 
     return () => {
       flushProgress();
       video.removeEventListener('loadedmetadata', resumeProgress);
       video.removeEventListener('timeupdate', saveProgress);
       video.removeEventListener('pause', flushProgress);
+      window.removeEventListener('pagehide', flushProgress);
       setHlsEngine(null);
       hls?.destroy();
       video.removeAttribute('src');

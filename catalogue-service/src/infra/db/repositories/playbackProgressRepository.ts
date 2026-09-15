@@ -1,4 +1,4 @@
-import { and, desc, eq, like, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../client.js";
 import { localMovies, playbackProgress } from "../schema.js";
 
@@ -8,11 +8,19 @@ export interface MoviePlaybackProgress {
   updatedAt: string;
 }
 
+function escapeLikePattern(value: string): string {
+  return value
+    .replace(/!/g, "!!")
+    .replace(/%/g, "!%")
+    .replace(/_/g, "!_");
+}
+
 export function listMoviePlaybackProgress(
   userId: string,
   moviesPath: string,
 ): MoviePlaybackProgress[] {
   const normalizedPath = moviesPath.replace(/\\/g, "/").replace(/\/?$/, "/");
+  const escapedPath = escapeLikePattern(normalizedPath);
 
   return db
     .select({
@@ -28,7 +36,7 @@ export function listMoviePlaybackProgress(
     .where(
       and(
         eq(playbackProgress.userId, userId),
-        like(localMovies.url, `${normalizedPath}%`),
+        sql`${localMovies.url} LIKE ${`${escapedPath}%`} ESCAPE '!'`,
       ),
     )
     .orderBy(desc(playbackProgress.updatedAt))

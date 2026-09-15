@@ -367,11 +367,7 @@ async function processJsonMetadataFile(
       eventType === "change" ||
       (alreadyExists && mediaWatcherRepo.isMissingTmdbMetadata(parsed.movieUrl));
 
-    // On change, or when a previous scan stored the file without TMDB data,
-    // remove the old row so enrichment can run again.
-    if (shouldRefresh && alreadyExists) {
-      mediaWatcherRepo.deleteMoviesByUrls([parsed.movieUrl]);
-    } else if (alreadyExists) {
+    if (alreadyExists && !shouldRefresh) {
       return;
     }
 
@@ -421,7 +417,10 @@ async function processJsonMetadataFile(
       movieData.originalLanguage = tmdbResult.original_language;
     if (tmdbResult?.tagline) movieData.tagline = tmdbResult.tagline;
 
-    const movieId = mediaWatcherRepo.insertDiscoveredMovie(movieData);
+    const movieId =
+      shouldRefresh && alreadyExists
+        ? mediaWatcherRepo.refreshDiscoveredMovie(movieData)
+        : mediaWatcherRepo.insertDiscoveredMovie(movieData);
 
     if (parsed.extras.length > 0) {
       mediaWatcherRepo.insertMovieExtras(movieId, parsed.extras);
