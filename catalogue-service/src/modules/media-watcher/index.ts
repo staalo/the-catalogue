@@ -6,4 +6,5 @@ export {
   scanMediaDirectory,
   getScanStatus,
   getLatestScanStatus,
+  collectJsonMetadataFiles,
 } from "./mediaWatcherService.js";

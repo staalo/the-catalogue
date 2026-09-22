@@ -27,13 +27,6 @@ sqlite.exec(`
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
 	ON users (normalized_user_name);
 
-	CREATE TABLE IF NOT EXISTS local_media (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		user_name TEXT,
-		movies_path TEXT,
-		tv_path TEXT
-	);
-
 	CREATE TABLE IF NOT EXISTS local_movies (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		adult INTEGER NOT NULL DEFAULT 0,

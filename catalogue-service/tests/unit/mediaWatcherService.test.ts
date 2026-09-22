@@ -4,11 +4,6 @@ const state = vi.hoisted(() => {
   const handlers: Record<string, (arg: string) => void | Promise<void>> = {};
   return {
     handlers,
-    localMediaRows: [] as Array<{
-      userName: string | null;
-      moviesPath: string | null;
-      tvPath: string | null;
-    }>,
     existsSyncMock: vi.fn<(p: string) => boolean>(),
     readdirSyncMock: vi.fn(() => [] as string[]),
     readFileSyncMock: vi.fn(() => "{}"),
@@ -72,13 +67,15 @@ vi.mock("../../src/infra/db/client.js", () => ({
   db: {
     select: () => ({
       from: () => ({
-        all: () => state.localMediaRows,
+        where: () => ({
+          get: () => undefined,
+        }),
       }),
     }),
   },
 }));
 
-vi.mock("../../src/infra/db/repositories/localMediaRepository.js", () => ({
+vi.mock("../../src/modules/media-paths/mediaPathService.js", () => ({
   getMediaPaths: state.getMediaPathsMock,
 }));
 
@@ -117,7 +114,6 @@ vi.mock(
 describe("mediaWatcherService delete cleanup", () => {
   beforeEach(() => {
     Object.keys(state.handlers).forEach((k) => delete state.handlers[k]);
-    state.localMediaRows = [];
     state.existsSyncMock.mockReset();
     state.readdirSyncMock.mockReset();
     state.readFileSyncMock.mockReset();
@@ -145,11 +141,11 @@ describe("mediaWatcherService delete cleanup", () => {
   });
 
   it("deletes matching movie URL candidates when metadata json is removed", async () => {
-    state.localMediaRows = [
-      { userName: "alice", moviesPath: "D:/media/movies", tvPath: null },
-    ];
     state.existsSyncMock.mockReturnValue(true);
-    state.getMediaPathsMock.mockReturnValue(null);
+    state.getMediaPathsMock.mockReturnValue({
+      moviesPath: "D:/media/movies",
+      tvPath: null,
+    });
     state.deleteMoviesByUrlsMock.mockReturnValue(1);
 
     const service = await import("../../src/modules/media-watcher/index.js");
@@ -171,11 +167,11 @@ describe("mediaWatcherService delete cleanup", () => {
   }, 15000);
 
   it("closes active watchers on stopAllWatchers", async () => {
-    state.localMediaRows = [
-      { userName: "alice", moviesPath: "D:/media/movies", tvPath: null },
-    ];
     state.existsSyncMock.mockReturnValue(true);
-    state.getMediaPathsMock.mockReturnValue(null);
+    state.getMediaPathsMock.mockReturnValue({
+      moviesPath: "D:/media/movies",
+      tvPath: null,
+    });
 
     const service = await import("../../src/modules/media-watcher/index.js");
 
@@ -186,9 +182,6 @@ describe("mediaWatcherService delete cleanup", () => {
   });
 
   it("imports movie and extras from DVD/Extras JSON format", async () => {
-    state.localMediaRows = [
-      { userName: "alice", moviesPath: "C:/temp/leffat", tvPath: null },
-    ];
     state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "C:/temp/leffat",
@@ -258,9 +251,6 @@ describe("mediaWatcherService delete cleanup", () => {
   });
 
   it("imports movie-only JSON and deletes exact imported URL on unlink", async () => {
-    state.localMediaRows = [
-      { userName: "alice", moviesPath: "C:/temp/leffat", tvPath: null },
-    ];
     state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "C:/temp/leffat",
@@ -307,9 +297,6 @@ describe("mediaWatcherService delete cleanup", () => {
   });
 
   it("retries TMDB search when a movie exists but has no enrichment", async () => {
-    state.localMediaRows = [
-      { userName: "alice", moviesPath: "C:/temp/leffat", tvPath: null },
-    ];
     state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "C:/temp/leffat",
@@ -356,9 +343,6 @@ describe("mediaWatcherService delete cleanup", () => {
   });
 
   it("maps TMDB snake_case cast fields onto local columns", async () => {
-    state.localMediaRows = [
-      { userName: "alice", moviesPath: "C:/temp/leffat", tvPath: null },
-    ];
     state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "C:/temp/leffat",
@@ -452,6 +436,26 @@ describe("mediaWatcherService delete cleanup", () => {
         originalName: "George Lucas",
         popularity: 12.1,
       },
+    ]);
+  });
+
+  it("falls back to top-level JSON files when recursive scandir fails", async () => {
+    state.readdirSyncMock.mockImplementation(((_dir: string, options?: { recursive?: boolean }) => {
+      if (options?.recursive) {
+        throw Object.assign(new Error("Unknown system error -526"), {
+          code: "Unknown system error -526",
+        });
+      }
+
+      return ["big-fish.json", "Jackie Brown", "snowpiercer.json"];
+    }) as typeof state.readdirSyncMock);
+
+    const { collectJsonMetadataFiles } =
+      await import("../../src/modules/media-watcher/mediaWatcherService.js");
+
+    expect(collectJsonMetadataFiles("/media/movies")).toEqual([
+      "big-fish.json",
+      "snowpiercer.json",
     ]);
   });
 });

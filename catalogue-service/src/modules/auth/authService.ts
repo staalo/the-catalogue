@@ -5,13 +5,11 @@ import {
   findUserById,
   findUserByUserName,
 } from "../../infra/db/repositories/userRepository.js";
-import { upsertMediaPaths } from "../../infra/db/repositories/localMediaRepository.js";
 import {
   BadRequestError,
   ConflictError,
   UnauthorizedError,
 } from "../../shared/errors/AppError.js";
-import { resolveExistingDirectory } from "../media-paths/mediaPathService.js";
 import { assertPasswordMeetsIdentityRules } from "./passwordPolicy.js";
 
 export interface AuthUser {
@@ -20,15 +18,12 @@ export interface AuthUser {
   userName: string;
 }
 
-export interface RegisteredUser extends AuthUser {
-  moviesPath: string | null;
-}
+export type RegisteredUser = AuthUser;
 
 export interface RegisterUserInput {
   email: string;
   password: string;
   userName?: string | undefined;
-  moviesPath?: string | undefined;
 }
 
 /**
@@ -60,15 +55,14 @@ export async function loginUser(
 }
 
 /**
- * Create a new account and an empty media-paths row.
- * moviesPath is optional and can be set later via PUT /api/media/paths.
+ * Create a new account. Media roots are deployment-level configuration and
+ * are shared by every account.
  */
 export async function registerUser(
   input: RegisterUserInput,
 ): Promise<RegisteredUser> {
   const email = input.email.trim();
   const userName = (input.userName?.trim() || email);
-  const moviesPathInput = input.moviesPath?.trim() || undefined;
 
   if (!email || !input.password) {
     throw new BadRequestError("email and password are required");
@@ -84,23 +78,16 @@ export async function registerUser(
     throw new ConflictError("An account with this email or user name already exists");
   }
 
-  const moviesPath = moviesPathInput
-    ? await resolveExistingDirectory(moviesPathInput)
-    : null;
-
   const user = await createUser({
     userName,
     email,
     password: input.password,
   });
 
-  upsertMediaPaths(user.userName, { moviesPath, tvPath: null });
-
   return {
     id: user.id,
     email: user.email ?? email,
     userName: user.userName,
-    moviesPath,
   };
 }
 

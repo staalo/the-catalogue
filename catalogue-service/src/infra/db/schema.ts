@@ -20,17 +20,6 @@ export const users = sqliteTable('users', {
 ]);
 
 // ---------------------------------------------------------------------------
-// LocalMedia — per-user media root paths.
-// Maps 1-to-1 with LocalMedia.cs + ApplicationDbContext entity config.
-// ---------------------------------------------------------------------------
-export const localMedia = sqliteTable('local_media', {
-  id:          integer('id').primaryKey({ autoIncrement: true }),
-  userName:    text('user_name'),
-  moviesPath:  text('movies_path'),
-  tvPath:      text('tv_path'),
-});
-
-// ---------------------------------------------------------------------------
 // LocalMovies — main movie record, mirrors LocalMovieDb.cs.
 // ---------------------------------------------------------------------------
 export const localMovies = sqliteTable('local_movies', {

@@ -31,14 +31,12 @@ type RegisterFormValues = {
   email: string;
   password: string;
   userName: string;
-  moviesPath: string;
 };
 
 const defaultValues: RegisterFormValues = {
   email: '',
   password: '',
   userName: '',
-  moviesPath: '',
 };
 
 function optionalText(value: string): string | undefined {
@@ -164,7 +162,6 @@ export function RegisterDialog({ open, onClose, onLogin }: RegisterDialogProps) 
         email: values.email.trim(),
         password: values.password,
         userName: optionalText(values.userName),
-        moviesPath: optionalText(values.moviesPath),
       });
       onClose();
     } catch {
@@ -196,7 +193,7 @@ export function RegisterDialog({ open, onClose, onLogin }: RegisterDialogProps) 
                 Create an account
               </Typography>
               <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                Set up your library, then jump right in.
+                Create your profile, then jump right in.
               </Typography>
             </Box>
             <IconButton onClick={handleClose} aria-label="close">
@@ -256,27 +253,6 @@ export function RegisterDialog({ open, onClose, onLogin }: RegisterDialogProps) 
                   fullWidth
                   error={Boolean(fieldState.error)}
                   helperText={fieldState.error?.message ?? 'Optional'}
-                  slotProps={{ input: { ref } }}
-                />
-              );
-            }}
-          />
-          <Controller
-            name="moviesPath"
-            control={control}
-            render={({ field, fieldState }) => {
-              const { ref, ...inputField } = field;
-              return (
-                <TextField
-                  {...inputField}
-                  label="Movies path"
-                  autoComplete="off"
-                  fullWidth
-                  error={Boolean(fieldState.error)}
-                  helperText={
-                    fieldState.error?.message ??
-                    'Optional. Local folder for your movie files.'
-                  }
                   slotProps={{ input: { ref } }}
                 />
               );

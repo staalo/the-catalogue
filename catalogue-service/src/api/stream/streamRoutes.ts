@@ -40,12 +40,7 @@ export async function registerStreamRoutes(
         return reply.status(400).send({ error: "Invalid movieId" });
       }
 
-      const userName = request.session.userName ?? request.session.email;
-      if (!userName) {
-        return reply.status(401).send({ error: "Unauthorized" });
-      }
-
-      const [status, file] = await tryGetMovieStream(userName, movieId);
+      const [status, file] = await tryGetMovieStream(movieId);
 
       if (status === StreamStatus.NotFound) {
         return reply.status(404).send({ error: "Movie not found" });
@@ -70,16 +65,7 @@ export async function registerStreamRoutes(
         return reply.status(400).send({ error: "Invalid movieId or extraId" });
       }
 
-      const userName = request.session.userName ?? request.session.email;
-      if (!userName) {
-        return reply.status(401).send({ error: "Unauthorized" });
-      }
-
-      const [status, file] = await tryGetExtraStream(
-        userName,
-        movieId,
-        extraId,
-      );
+      const [status, file] = await tryGetExtraStream(movieId, extraId);
 
       if (status === StreamStatus.NotFound) {
         return reply.status(404).send({ error: "Extra not found" });
@@ -105,13 +91,7 @@ export async function registerStreamRoutes(
         return reply.status(400).send({ error: "Invalid parameters" });
       }
 
-      const userName = request.session.userName ?? request.session.email;
-      if (!userName) {
-        return reply.status(401).send({ error: "Unauthorized" });
-      }
-
       const [status, file] = await tryGetExtraAssetStream(
-        userName,
         movieId,
         extraId,
         relativePath,
@@ -140,13 +120,7 @@ export async function registerStreamRoutes(
         return reply.status(400).send({ error: "Invalid parameters" });
       }
 
-      const userName = request.session.userName ?? request.session.email;
-      if (!userName) {
-        return reply.status(401).send({ error: "Unauthorized" });
-      }
-
       const [status, file] = await tryGetMovieAssetStream(
-        userName,
         movieId,
         relativePath,
       );

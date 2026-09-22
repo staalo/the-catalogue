@@ -18,7 +18,6 @@ interface RegisterBody {
   email: string;
   password: string;
   userName?: string;
-  moviesPath?: string;
 }
 
 /**
@@ -31,10 +30,10 @@ interface RegisterBody {
  */
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   // POST /register
-  // Body: { email, password, userName?, moviesPath? }
+  // Body: { email, password, userName? }
   app.post<{ Body: RegisterBody }>("/register", async (request, reply) => {
     const body = request.body ?? ({} as RegisterBody);
-    const { email, password, userName, moviesPath } = body;
+    const { email, password, userName } = body;
 
     if (!email || !password) {
       return reply
@@ -47,7 +46,6 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         email,
         password,
         userName,
-        moviesPath,
       });
       request.session.userId = user.id;
       request.session.email = user.email;
@@ -55,7 +53,6 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(201).send({
         email: user.email,
         userName: user.userName,
-        moviesPath: user.moviesPath,
       });
     } catch (err) {
       if (err instanceof AppError) {

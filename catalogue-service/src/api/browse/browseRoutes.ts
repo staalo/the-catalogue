@@ -15,14 +15,8 @@ export async function browseRoutes(app: FastifyInstance): Promise<void> {
     "/api/browse/browsemovies",
     { preHandler: requireAuth },
     async (request, reply) => {
-      const userName = request.session.userName ?? request.session.email;
-
-      if (!userName) {
-        return reply.status(401).send({ error: "Unauthorized" });
-      }
-
       const page = Math.max(1, Number(request.query.page) || 1);
-      const result = await browseMovies(userName, page);
+      const result = await browseMovies(page);
 
       if (result.results.length === 0) {
         return reply

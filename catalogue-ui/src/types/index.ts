@@ -106,16 +106,6 @@ export type CurrentUser = {
   userName: string;
 };
 
-export type MediaPaths = {
-  moviesPath: string | null;
-  tvPath: string | null;
-};
-
-export type UpdateMediaPathsRequest = {
-  moviesPath?: string | null;
-  tvPath?: string | null;
-};
-
 export type LoginRequest = {
   email: string;
   password: string;
@@ -126,13 +116,11 @@ export type RegisterRequest = {
   email: string;
   password: string;
   userName?: string;
-  moviesPath?: string;
 };
 
 export type RegisterResponse = {
   email: string;
   userName: string;
-  moviesPath: string | null;
 };
 
 export type PlayerTarget = {

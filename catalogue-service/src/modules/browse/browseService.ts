@@ -1,5 +1,5 @@
 import path from "node:path";
-import { getMediaPaths } from "../../infra/db/repositories/localMediaRepository.js";
+import { getMediaPaths } from "../media-paths/mediaPathService.js";
 import { getMoviesPaginated } from "../../infra/db/repositories/localMovieRepository.js";
 import type { MovieWithRelations } from "../../infra/db/repositories/localMovieRepository.js";
 
@@ -199,14 +199,11 @@ function mapMovie(m: MovieWithRelations): MovieResponse {
 // ---------------------------------------------------------------------------
 
 /**
- * Browse paginated movies for a user.
+ * Browse the shared movie library.
  * Mirrors MovieBrowseService.BrowseMovies() + LocalMovieBrowseRepository.BrowseMovies().
  */
-export async function browseMovies(
-  userName: string,
-  page: number,
-): Promise<BrowseResult> {
-  const mediaPaths = getMediaPaths(userName);
+export async function browseMovies(page: number): Promise<BrowseResult> {
+  const mediaPaths = getMediaPaths();
 
   if (!mediaPaths?.moviesPath) {
     return { page, results: [], totalPages: 0, totalResults: 0 };
