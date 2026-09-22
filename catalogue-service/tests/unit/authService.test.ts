@@ -93,7 +93,6 @@ describe("authService", () => {
       id: "u-new",
       userName: "new@example.com",
       email: "new@example.com",
-      passwordHash: "hash",
     });
     const { registerUser } =
       await import("../../src/modules/auth/authService.js");
@@ -116,7 +115,6 @@ describe("authService", () => {
       id: "u-path",
       userName: "alice",
       email: "alice@example.com",
-      passwordHash: "hash",
     });
 
     const { registerUser } =

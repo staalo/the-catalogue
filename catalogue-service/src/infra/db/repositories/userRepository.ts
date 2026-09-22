@@ -17,6 +17,8 @@ export interface CreateUserInput {
   password: string;
 }
 
+export type CreatedUser = Omit<User, "passwordHash">;
+
 /** Find a user by email (case-insensitive via normalizedEmail). */
 export function findUserByEmail(email: string): User | undefined {
   return db
@@ -64,7 +66,7 @@ export function findUserById(id: string): User | undefined {
  * NOTE: This service manages its own user records independently of the
  * .NET ASP.NET Identity tables. Existing .NET users must be re-created here.
  */
-export async function createUser(input: CreateUserInput): Promise<User> {
+export async function createUser(input: CreateUserInput): Promise<CreatedUser> {
   const id = randomUUID();
   const passwordHash = await bcrypt.hash(input.password, 12);
 
@@ -79,5 +81,5 @@ export async function createUser(input: CreateUserInput): Promise<User> {
     })
     .run();
 
-  return { id, userName: input.userName, email: input.email, passwordHash };
+  return { id, userName: input.userName, email: input.email };
 }
