@@ -2,7 +2,7 @@
  * Media Watcher Repository — database operations for scan tracking and movie discovery.
  */
 
-import { eq, desc, and, inArray, isNull } from "drizzle-orm";
+import { eq, desc, and, inArray, isNull, isNotNull } from "drizzle-orm";
 import { db } from "../client.js";
 import {
   scanStatus,
@@ -49,6 +49,13 @@ export interface DiscoveredMovieData {
   originalLanguage?: string;
   tagline?: string;
   hasExtras?: boolean;
+  metadataFile?: string | null;
+}
+
+export interface MovieMetadataFileRef {
+  id: number;
+  url: string;
+  metadataFile: string;
 }
 
 function toMovieValues(movieData: DiscoveredMovieData) {
@@ -70,6 +77,7 @@ function toMovieValues(movieData: DiscoveredMovieData) {
     originalLanguage: movieData.originalLanguage ?? null,
     tagline: movieData.tagline ?? null,
     hasExtras: movieData.hasExtras ?? false,
+    metadataFile: movieData.metadataFile ?? null,
   };
 }
 
@@ -99,6 +107,29 @@ export function createScanRecord(
     .get();
 
   return record as ScanStatusRecord;
+}
+
+/**
+ * Mark scans still "running" from a previous process as failed.
+ * Called once at startup, before a new scan row is inserted.
+ */
+export function failInterruptedScans(): number {
+  const result = db
+    .update(scanStatus)
+    .set({
+      status: "failed",
+      endTime: new Date().toISOString(),
+      errorLog: JSON.stringify([
+        {
+          error: "Scan interrupted",
+          message: "The service stopped before this scan finished.",
+        },
+      ]),
+    })
+    .where(eq(scanStatus.status, "running"))
+    .run();
+
+  return result.changes;
 }
 
 /**
@@ -153,21 +184,15 @@ export function movieExistsByUrl(url: string): boolean {
   return !!result;
 }
 
-/**
- * True when a row exists for this URL but has no TMDB metadata yet,
- * or stored credits are missing TMDB fields (e.g. credit_id).
- * Lets a later scan retry enrichment without duplicating the movie.
- */
-export function isMissingTmdbMetadata(url: string): boolean {
+function movieNeedsTmdbEnrichment(movieId: number): boolean {
   const result = db
     .select({
-      id: localMovies.id,
       overview: localMovies.overview,
       posterPath: localMovies.posterPath,
       imdbId: localMovies.imdbId,
     })
     .from(localMovies)
-    .where(eq(localMovies.url, url))
+    .where(eq(localMovies.id, movieId))
     .limit(1)
     .get();
 
@@ -184,7 +209,7 @@ export function isMissingTmdbMetadata(url: string): boolean {
     .from(localMovieCast)
     .where(
       and(
-        eq(localMovieCast.localMovieId, result.id),
+        eq(localMovieCast.localMovieId, movieId),
         isNull(localMovieCast.creditId),
       ),
     )
@@ -192,6 +217,34 @@ export function isMissingTmdbMetadata(url: string): boolean {
     .get();
 
   return !!incompleteCast;
+}
+
+/**
+ * True when this movie has no TMDB metadata yet,
+ * or stored credits are missing TMDB fields (e.g. credit_id).
+ */
+export function isMissingTmdbMetadataById(movieId: number): boolean {
+  return movieNeedsTmdbEnrichment(movieId);
+}
+
+/**
+ * True when a row exists for this URL but has no TMDB metadata yet,
+ * or stored credits are missing TMDB fields (e.g. credit_id).
+ * Lets a later scan retry enrichment without duplicating the movie.
+ */
+export function isMissingTmdbMetadata(url: string): boolean {
+  const result = db
+    .select({ id: localMovies.id })
+    .from(localMovies)
+    .where(eq(localMovies.url, url))
+    .limit(1)
+    .get();
+
+  if (!result) {
+    return false;
+  }
+
+  return movieNeedsTmdbEnrichment(result.id);
 }
 
 /**
@@ -209,6 +262,62 @@ export function deleteMoviesByUrls(urls: string[]): number {
     .run();
 
   return result.changes;
+}
+
+/**
+ * Movies that were imported from a persisted metadata JSON path.
+ * Rows with a null metadata_file are legacy and are left alone.
+ */
+export function listMoviesWithMetadataFile(): MovieMetadataFileRef[] {
+  const rows = db
+    .select({
+      id: localMovies.id,
+      url: localMovies.url,
+      metadataFile: localMovies.metadataFile,
+    })
+    .from(localMovies)
+    .where(isNotNull(localMovies.metadataFile))
+    .all();
+
+  return rows.filter(
+    (row): row is MovieMetadataFileRef =>
+      typeof row.metadataFile === "string" && row.metadataFile.length > 0,
+  );
+}
+
+export function findMovieIdByMetadataFile(
+  metadataFile: string,
+): number | null {
+  const record = db
+    .select({ id: localMovies.id })
+    .from(localMovies)
+    .where(eq(localMovies.metadataFile, metadataFile))
+    .limit(1)
+    .get();
+
+  return record?.id ?? null;
+}
+
+export function deleteMoviesByMetadataFile(metadataFile: string): number {
+  const result = db
+    .delete(localMovies)
+    .where(eq(localMovies.metadataFile, metadataFile))
+    .run();
+
+  return result.changes;
+}
+
+/**
+ * Attach a metadata JSON path to an existing row that does not have one yet.
+ */
+export function setMetadataFileIfMissing(
+  url: string,
+  metadataFile: string,
+): void {
+  db.update(localMovies)
+    .set({ metadataFile })
+    .where(and(eq(localMovies.url, url), isNull(localMovies.metadataFile)))
+    .run();
 }
 
 /**
@@ -233,12 +342,22 @@ export function refreshDiscoveredMovie(
   movieData: DiscoveredMovieData,
 ): number {
   return db.transaction((tx) => {
-    const existing = tx
-      .select({ id: localMovies.id })
-      .from(localMovies)
-      .where(eq(localMovies.url, movieData.url))
-      .limit(1)
-      .get();
+    const existingByMetadata = movieData.metadataFile
+      ? tx
+          .select({ id: localMovies.id })
+          .from(localMovies)
+          .where(eq(localMovies.metadataFile, movieData.metadataFile))
+          .limit(1)
+          .get()
+      : undefined;
+    const existing =
+      existingByMetadata ??
+      tx
+        .select({ id: localMovies.id })
+        .from(localMovies)
+        .where(eq(localMovies.url, movieData.url))
+        .limit(1)
+        .get();
 
     if (!existing) {
       throw new Error(`Movie not found for metadata refresh: ${movieData.url}`);

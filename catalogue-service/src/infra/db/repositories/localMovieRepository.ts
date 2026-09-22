@@ -65,7 +65,7 @@ export async function getMoviesPaginated(
 }
 
 /** Fetch a single movie with extras only (used by the stream module). */
-export async function getMovieById(
+export async function getMovieByIdWithExtras(
   id: number,
 ): Promise<MovieWithExtras | undefined> {
   return (await db.query.localMovies.findFirst({

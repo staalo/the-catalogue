@@ -17,6 +17,7 @@ export const users = sqliteTable('users', {
   createdAt:            text('created_at').notNull().default('CURRENT_TIMESTAMP'),
 }, (t) => [
   uniqueIndex('idx_users_username').on(t.normalizedUserName),
+  uniqueIndex('idx_users_email').on(t.normalizedEmail),
 ]);
 
 // ---------------------------------------------------------------------------
@@ -42,7 +43,11 @@ export const localMovies = sqliteTable('local_movies', {
   /** Relative file URL used by the stream module */
   url:              text('url').notNull(),
   hasExtras:        integer('has_extras', { mode: 'boolean' }).notNull().default(false),
-});
+  /** Absolute path of the top-level library JSON that produced this row. */
+  metadataFile:     text('metadata_file'),
+}, (t) => [
+  index('idx_local_movies_metadata_file').on(t.metadataFile),
+]);
 
 // ---------------------------------------------------------------------------
 // PlaybackProgress — per-user movie resume state shared across devices.

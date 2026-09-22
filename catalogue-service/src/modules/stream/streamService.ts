@@ -1,5 +1,5 @@
 import path from "node:path";
-import { getMovieById } from "../../infra/db/repositories/localMovieRepository.js";
+import { getMovieByIdWithExtras } from "../../infra/db/repositories/localMovieRepository.js";
 import { getMediaPaths } from "../media-paths/mediaPathService.js";
 import {
   isPathUnderDirectory,
@@ -78,7 +78,7 @@ export async function tryGetMovieStream(
     return [StreamStatus.Forbidden, null];
   }
 
-  const movie = await getMovieById(movieId);
+  const movie = await getMovieByIdWithExtras(movieId);
   if (!movie) {
     return [StreamStatus.NotFound, null];
   }
@@ -98,7 +98,7 @@ export async function tryGetMovieAssetStream(
     return [StreamStatus.Forbidden, null];
   }
 
-  const movie = await getMovieById(movieId);
+  const movie = await getMovieByIdWithExtras(movieId);
   if (!movie) {
     return [StreamStatus.NotFound, null];
   }
@@ -132,7 +132,7 @@ export async function tryGetExtraStream(
     return [StreamStatus.Forbidden, null];
   }
 
-  const movie = await getMovieById(movieId);
+  const movie = await getMovieByIdWithExtras(movieId);
   if (!movie) {
     return [StreamStatus.NotFound, null];
   }
@@ -162,7 +162,7 @@ export async function tryGetExtraAssetStream(
     return [StreamStatus.Forbidden, null];
   }
 
-  const movie = await getMovieById(movieId);
+  const movie = await getMovieByIdWithExtras(movieId);
   if (!movie) {
     return [StreamStatus.NotFound, null];
   }

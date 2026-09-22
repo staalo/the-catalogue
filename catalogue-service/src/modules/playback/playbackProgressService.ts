@@ -1,4 +1,4 @@
-import { getMovieById } from "../../infra/db/repositories/localMovieRepository.js";
+import { getMovieByIdWithExtras } from "../../infra/db/repositories/localMovieRepository.js";
 import {
   listMoviePlaybackProgress,
   upsertMoviePlaybackProgress,
@@ -40,7 +40,7 @@ export async function saveMoviePlaybackProgress(
     throw new BadRequestError("Progress must be a finite number.");
   }
 
-  const movie = await getMovieById(movieId);
+  const movie = await getMovieByIdWithExtras(movieId);
   if (!movie) {
     throw new NotFoundError("Movie not found.");
   }
