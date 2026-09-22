@@ -45,7 +45,8 @@ sqlite.exec(`
 		vote_average REAL NOT NULL DEFAULT 0,
 		vote_count INTEGER NOT NULL DEFAULT 0,
 		url TEXT NOT NULL,
-		has_extras INTEGER NOT NULL DEFAULT 0
+		has_extras INTEGER NOT NULL DEFAULT 0,
+		metadata_file TEXT
 	);
 
 	CREATE TABLE IF NOT EXISTS playback_progress (
@@ -176,6 +177,15 @@ const localMovieColumns = sqlite
 if (!localMovieColumns.some((column) => column.name === "backdrop_path")) {
 	sqlite.exec("ALTER TABLE local_movies ADD COLUMN backdrop_path TEXT;");
 }
+
+if (!localMovieColumns.some((column) => column.name === "metadata_file")) {
+	sqlite.exec("ALTER TABLE local_movies ADD COLUMN metadata_file TEXT;");
+}
+
+sqlite.exec(`
+	CREATE INDEX IF NOT EXISTS idx_local_movies_metadata_file
+	ON local_movies (metadata_file);
+`);
 
 export const db = drizzle(sqlite, { schema });
 export type Db = typeof db;

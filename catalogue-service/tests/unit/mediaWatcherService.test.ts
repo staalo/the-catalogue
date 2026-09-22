@@ -1,4 +1,9 @@
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+function metadataFilePath(filePath: string): string {
+  return path.resolve(filePath).replace(/\\/g, "/");
+}
 
 const state = vi.hoisted(() => {
   const handlers: Record<string, (arg: string) => void | Promise<void>> = {};
@@ -28,6 +33,14 @@ const state = vi.hoisted(() => {
         ) => void
       >(),
     deleteMoviesByUrlsMock: vi.fn<(urls: string[]) => number>(),
+    deleteMoviesByMetadataFileMock: vi.fn<(metadataFile: string) => number>(),
+    listMoviesWithMetadataFileMock: vi.fn(() => [] as Array<{
+      id: number;
+      url: string;
+      metadataFile: string;
+    }>),
+    findMovieIdByMetadataFileMock: vi.fn<(metadataFile: string) => number | null>(),
+    setMetadataFileIfMissingMock: vi.fn<(url: string, metadataFile: string) => void>(),
     searchMovieOnTmdbMock: vi.fn<
       typeof import("../../src/modules/tmdb/tmdbClientService.js").searchMovieOnTmdb
     >(async () => null),
@@ -93,6 +106,10 @@ vi.mock("../../src/infra/db/repositories/mediaWatcherRepository.js", () => ({
   insertMovieGenres: vi.fn(),
   insertMovieTrailer: vi.fn(),
   deleteMoviesByUrls: state.deleteMoviesByUrlsMock,
+  deleteMoviesByMetadataFile: state.deleteMoviesByMetadataFileMock,
+  listMoviesWithMetadataFile: state.listMoviesWithMetadataFileMock,
+  findMovieIdByMetadataFile: state.findMovieIdByMetadataFileMock,
+  setMetadataFileIfMissing: state.setMetadataFileIfMissingMock,
 }));
 
 vi.mock(
@@ -128,6 +145,10 @@ describe("mediaWatcherService delete cleanup", () => {
     state.refreshDiscoveredMovieMock.mockReset();
     state.insertMovieExtrasMock.mockReset();
     state.deleteMoviesByUrlsMock.mockReset();
+    state.deleteMoviesByMetadataFileMock.mockReset();
+    state.listMoviesWithMetadataFileMock.mockReset();
+    state.findMovieIdByMetadataFileMock.mockReset();
+    state.setMetadataFileIfMissingMock.mockReset();
     state.searchMovieOnTmdbMock.mockReset();
     state.insertMovieCastMock.mockReset();
     state.insertMovieCrewMock.mockReset();
@@ -138,15 +159,18 @@ describe("mediaWatcherService delete cleanup", () => {
     state.refreshDiscoveredMovieMock.mockReturnValue(1);
     state.searchMovieOnTmdbMock.mockResolvedValue(null);
     state.createScanRecordMock.mockReturnValue({ id: 1 });
+    state.listMoviesWithMetadataFileMock.mockReturnValue([]);
+    state.findMovieIdByMetadataFileMock.mockReturnValue(null);
+    state.deleteMoviesByMetadataFileMock.mockReturnValue(1);
+    state.readdirSyncMock.mockReturnValue([]);
   });
 
-  it("deletes matching movie URL candidates when metadata json is removed", async () => {
+  it("ignores nested metadata json on unlink", async () => {
     state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "D:/media/movies",
       tvPath: null,
     });
-    state.deleteMoviesByUrlsMock.mockReturnValue(1);
 
     const service = await import("../../src/modules/media-watcher/index.js");
 
@@ -157,13 +181,31 @@ describe("mediaWatcherService delete cleanup", () => {
 
     await unlinkHandler("D:/media/movies/Sub/Foo.json");
 
-    expect(state.deleteMoviesByUrlsMock).toHaveBeenCalledTimes(1);
-    const [urls] = state.deleteMoviesByUrlsMock.mock.calls[0] ?? [];
+    expect(state.deleteMoviesByMetadataFileMock).not.toHaveBeenCalled();
+    expect(state.deleteMoviesByUrlsMock).not.toHaveBeenCalled();
+  }, 15000);
 
-    expect(urls).toContain("D:/media/movies/Sub/Foo.mp4");
-    expect(urls).toContain("D:/media/movies/Sub/Foo.m3u8");
-    expect(urls).toContain("D:/media/movies/Sub/Foo.ts");
-    expect(urls).toHaveLength(9);
+  it("deletes the movie row by metadata_file when a top-level json is removed", async () => {
+    state.existsSyncMock.mockReturnValue(true);
+    state.getMediaPathsMock.mockReturnValue({
+      moviesPath: "D:/media/movies",
+      tvPath: null,
+    });
+
+    const service = await import("../../src/modules/media-watcher/index.js");
+
+    await service.setupFileWatchers();
+
+    const unlinkHandler = state.handlers["unlink"];
+    expect(unlinkHandler).toBeTypeOf("function");
+
+    await unlinkHandler("D:/media/movies/big-fish.json");
+
+    expect(state.deleteMoviesByMetadataFileMock).toHaveBeenCalledTimes(1);
+    expect(state.deleteMoviesByMetadataFileMock).toHaveBeenCalledWith(
+      metadataFilePath("D:/media/movies/big-fish.json"),
+    );
+    expect(state.deleteMoviesByUrlsMock).not.toHaveBeenCalled();
   }, 15000);
 
   it("closes active watchers on stopAllWatchers", async () => {
@@ -231,6 +273,7 @@ describe("mediaWatcherService delete cleanup", () => {
       url: "C:/temp/leffat/Big Fish/big-fish.mp4",
       hasExtras: true,
       runtime: 120,
+      metadataFile: metadataFilePath("C:/temp/leffat/big-fish.json"),
     });
 
     expect(state.insertMovieExtrasMock).toHaveBeenCalledTimes(1);
@@ -290,10 +333,13 @@ describe("mediaWatcherService delete cleanup", () => {
       url: "C:/temp/leffat/Jackie Brown/master.m3u8",
       hasExtras: false,
       runtime: 148,
+      metadataFile: metadataFilePath("C:/temp/leffat/jackie-brown.json"),
     });
 
-    const [deletedUrls] = state.deleteMoviesByUrlsMock.mock.calls.at(-1) ?? [];
-    expect(deletedUrls).toEqual(["C:/temp/leffat/Jackie Brown/master.m3u8"]);
+    expect(state.deleteMoviesByMetadataFileMock).toHaveBeenCalledWith(
+      metadataFilePath("C:/temp/leffat/jackie-brown.json"),
+    );
+    expect(state.deleteMoviesByUrlsMock).not.toHaveBeenCalled();
   });
 
   it("retries TMDB search when a movie exists but has no enrichment", async () => {
@@ -336,6 +382,7 @@ describe("mediaWatcherService delete cleanup", () => {
       expect.objectContaining({
         title: "Big Fish",
         url: "C:/temp/leffat/Big Fish/master.m3u8",
+        metadataFile: metadataFilePath("C:/temp/leffat/big-fish.json"),
       }),
     );
     expect(state.insertDiscoveredMovieMock).not.toHaveBeenCalled();
@@ -439,16 +486,13 @@ describe("mediaWatcherService delete cleanup", () => {
     ]);
   });
 
-  it("falls back to top-level JSON files when recursive scandir fails", async () => {
-    state.readdirSyncMock.mockImplementation(((_dir: string, options?: { recursive?: boolean }) => {
-      if (options?.recursive) {
-        throw Object.assign(new Error("Unknown system error -526"), {
-          code: "Unknown system error -526",
-        });
-      }
-
-      return ["big-fish.json", "Jackie Brown", "snowpiercer.json"];
-    }) as typeof state.readdirSyncMock);
+  it("collects only top-level JSON metadata files", async () => {
+    state.readdirSyncMock.mockReturnValue([
+      "big-fish.json",
+      "Jackie Brown",
+      "snowpiercer.json",
+      "Sub/nested.json",
+    ]);
 
     const { collectJsonMetadataFiles } =
       await import("../../src/modules/media-watcher/mediaWatcherService.js");
@@ -457,5 +501,69 @@ describe("mediaWatcherService delete cleanup", () => {
       "big-fish.json",
       "snowpiercer.json",
     ]);
+  });
+
+  it("ignores nested metadata json on add", async () => {
+    state.existsSyncMock.mockReturnValue(true);
+    state.getMediaPathsMock.mockReturnValue({
+      moviesPath: "C:/temp/leffat",
+      tvPath: null,
+    });
+
+    const service = await import("../../src/modules/media-watcher/index.js");
+
+    await service.setupFileWatchers();
+
+    const addHandler = state.handlers["add"];
+    expect(addHandler).toBeTypeOf("function");
+
+    await addHandler("C:/temp/leffat/Big Fish/nested.json");
+
+    expect(state.insertDiscoveredMovieMock).not.toHaveBeenCalled();
+    expect(state.readFileSyncMock).not.toHaveBeenCalled();
+  });
+
+  it("removes catalog rows whose top-level metadata file is gone", async () => {
+    const missingMetadata = metadataFilePath("C:/temp/leffat/missing.json");
+    const otherLibraryMetadata = metadataFilePath(
+      "C:/other/library/other.json",
+    );
+
+    state.existsSyncMock.mockImplementation((filePath: string) => {
+      const normalized = String(filePath).replace(/\\/g, "/");
+      return !normalized.toLowerCase().endsWith("missing.json");
+    });
+    state.getMediaPathsMock.mockReturnValue({
+      moviesPath: "C:/temp/leffat",
+      tvPath: null,
+    });
+    state.readdirSyncMock.mockReturnValue([]);
+    state.listMoviesWithMetadataFileMock.mockReturnValue([
+      {
+        id: 7,
+        url: "C:/temp/leffat/Gone/movie.mp4",
+        metadataFile: missingMetadata,
+      },
+      {
+        id: 8,
+        url: "C:/other/library/movie.mp4",
+        metadataFile: otherLibraryMetadata,
+      },
+    ]);
+
+    const service = await import("../../src/modules/media-watcher/index.js");
+
+    await service.scanMediaDirectory("system", "movies");
+
+    await vi.waitFor(() => {
+      expect(state.deleteMoviesByMetadataFileMock).toHaveBeenCalled();
+    });
+
+    expect(state.deleteMoviesByMetadataFileMock).toHaveBeenCalledWith(
+      missingMetadata,
+    );
+    expect(state.deleteMoviesByMetadataFileMock).not.toHaveBeenCalledWith(
+      otherLibraryMetadata,
+    );
   });
 });

@@ -2,7 +2,7 @@
  * Media Watcher Repository — database operations for scan tracking and movie discovery.
  */
 
-import { eq, desc, and, inArray, isNull } from "drizzle-orm";
+import { eq, desc, and, inArray, isNull, isNotNull } from "drizzle-orm";
 import { db } from "../client.js";
 import {
   scanStatus,
@@ -49,6 +49,13 @@ export interface DiscoveredMovieData {
   originalLanguage?: string;
   tagline?: string;
   hasExtras?: boolean;
+  metadataFile?: string | null;
+}
+
+export interface MovieMetadataFileRef {
+  id: number;
+  url: string;
+  metadataFile: string;
 }
 
 function toMovieValues(movieData: DiscoveredMovieData) {
@@ -70,6 +77,7 @@ function toMovieValues(movieData: DiscoveredMovieData) {
     originalLanguage: movieData.originalLanguage ?? null,
     tagline: movieData.tagline ?? null,
     hasExtras: movieData.hasExtras ?? false,
+    metadataFile: movieData.metadataFile ?? null,
   };
 }
 
@@ -212,6 +220,62 @@ export function deleteMoviesByUrls(urls: string[]): number {
 }
 
 /**
+ * Movies that were imported from a persisted metadata JSON path.
+ * Rows with a null metadata_file are legacy and are left alone.
+ */
+export function listMoviesWithMetadataFile(): MovieMetadataFileRef[] {
+  const rows = db
+    .select({
+      id: localMovies.id,
+      url: localMovies.url,
+      metadataFile: localMovies.metadataFile,
+    })
+    .from(localMovies)
+    .where(isNotNull(localMovies.metadataFile))
+    .all();
+
+  return rows.filter(
+    (row): row is MovieMetadataFileRef =>
+      typeof row.metadataFile === "string" && row.metadataFile.length > 0,
+  );
+}
+
+export function findMovieIdByMetadataFile(
+  metadataFile: string,
+): number | null {
+  const record = db
+    .select({ id: localMovies.id })
+    .from(localMovies)
+    .where(eq(localMovies.metadataFile, metadataFile))
+    .limit(1)
+    .get();
+
+  return record?.id ?? null;
+}
+
+export function deleteMoviesByMetadataFile(metadataFile: string): number {
+  const result = db
+    .delete(localMovies)
+    .where(eq(localMovies.metadataFile, metadataFile))
+    .run();
+
+  return result.changes;
+}
+
+/**
+ * Attach a metadata JSON path to an existing row that does not have one yet.
+ */
+export function setMetadataFileIfMissing(
+  url: string,
+  metadataFile: string,
+): void {
+  db.update(localMovies)
+    .set({ metadataFile })
+    .where(and(eq(localMovies.url, url), isNull(localMovies.metadataFile)))
+    .run();
+}
+
+/**
  * Insert a discovered movie into the database.
  * Returns the inserted movie record with ID.
  */
@@ -233,12 +297,22 @@ export function refreshDiscoveredMovie(
   movieData: DiscoveredMovieData,
 ): number {
   return db.transaction((tx) => {
-    const existing = tx
-      .select({ id: localMovies.id })
-      .from(localMovies)
-      .where(eq(localMovies.url, movieData.url))
-      .limit(1)
-      .get();
+    const existingByMetadata = movieData.metadataFile
+      ? tx
+          .select({ id: localMovies.id })
+          .from(localMovies)
+          .where(eq(localMovies.metadataFile, movieData.metadataFile))
+          .limit(1)
+          .get()
+      : undefined;
+    const existing =
+      existingByMetadata ??
+      tx
+        .select({ id: localMovies.id })
+        .from(localMovies)
+        .where(eq(localMovies.url, movieData.url))
+        .limit(1)
+        .get();
 
     if (!existing) {
       throw new Error(`Movie not found for metadata refresh: ${movieData.url}`);
