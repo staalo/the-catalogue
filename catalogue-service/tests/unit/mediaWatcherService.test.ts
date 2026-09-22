@@ -9,16 +9,18 @@ const state = vi.hoisted(() => {
   const handlers: Record<string, (arg: string) => void | Promise<void>> = {};
   return {
     handlers,
-    existsSyncMock: vi.fn<(p: string) => boolean>(),
-    readdirSyncMock: vi.fn(() => [] as string[]),
-    readFileSyncMock: vi.fn(() => "{}"),
+    accessMock: vi.fn<(p: string) => Promise<void>>(async () => {}),
+    readdirMock: vi.fn(async () => [] as string[]),
+    readFileMock: vi.fn(async () => "{}"),
     closeMock: vi.fn(async () => {}),
     watchMock: vi.fn(),
     getMediaPathsMock: vi.fn(),
     createScanRecordMock: vi.fn(() => ({ id: 1 })),
+    failInterruptedScansMock: vi.fn(() => 0),
     updateScanRecordMock: vi.fn(),
     movieExistsByUrlMock: vi.fn<(url: string) => boolean>(),
     isMissingTmdbMetadataMock: vi.fn<(url: string) => boolean>(),
+    isMissingTmdbMetadataByIdMock: vi.fn<(id: number) => boolean>(),
     insertDiscoveredMovieMock: vi.fn<
       (movie: Record<string, unknown>) => number
     >(() => 1),
@@ -49,12 +51,10 @@ const state = vi.hoisted(() => {
   };
 });
 
-vi.mock("node:fs", () => ({
-  default: {
-    existsSync: state.existsSyncMock,
-    readdirSync: state.readdirSyncMock,
-    readFileSync: state.readFileSyncMock,
-  },
+vi.mock("node:fs/promises", () => ({
+  access: state.accessMock,
+  readdir: state.readdirMock,
+  readFile: state.readFileMock,
 }));
 
 vi.mock("chokidar", () => {
@@ -94,10 +94,12 @@ vi.mock("../../src/modules/media-paths/mediaPathService.js", () => ({
 
 vi.mock("../../src/infra/db/repositories/mediaWatcherRepository.js", () => ({
   createScanRecord: state.createScanRecordMock,
+  failInterruptedScans: state.failInterruptedScansMock,
   updateScanRecord: state.updateScanRecordMock,
   getLatestScanForUser: vi.fn(),
   movieExistsByUrl: state.movieExistsByUrlMock,
   isMissingTmdbMetadata: state.isMissingTmdbMetadataMock,
+  isMissingTmdbMetadataById: state.isMissingTmdbMetadataByIdMock,
   insertDiscoveredMovie: state.insertDiscoveredMovieMock,
   refreshDiscoveredMovie: state.refreshDiscoveredMovieMock,
   insertMovieExtras: state.insertMovieExtrasMock,
@@ -131,16 +133,18 @@ vi.mock(
 describe("mediaWatcherService delete cleanup", () => {
   beforeEach(() => {
     Object.keys(state.handlers).forEach((k) => delete state.handlers[k]);
-    state.existsSyncMock.mockReset();
-    state.readdirSyncMock.mockReset();
-    state.readFileSyncMock.mockReset();
+    state.accessMock.mockReset();
+    state.readdirMock.mockReset();
+    state.readFileMock.mockReset();
     state.closeMock.mockReset();
     state.watchMock.mockClear();
     state.getMediaPathsMock.mockReset();
     state.createScanRecordMock.mockReset();
+    state.failInterruptedScansMock.mockReset();
     state.updateScanRecordMock.mockReset();
     state.movieExistsByUrlMock.mockReset();
     state.isMissingTmdbMetadataMock.mockReset();
+    state.isMissingTmdbMetadataByIdMock.mockReset();
     state.insertDiscoveredMovieMock.mockReset();
     state.refreshDiscoveredMovieMock.mockReset();
     state.insertMovieExtrasMock.mockReset();
@@ -155,18 +159,41 @@ describe("mediaWatcherService delete cleanup", () => {
 
     state.movieExistsByUrlMock.mockReturnValue(false);
     state.isMissingTmdbMetadataMock.mockReturnValue(false);
+    state.isMissingTmdbMetadataByIdMock.mockReturnValue(false);
+    state.accessMock.mockResolvedValue(undefined);
+    state.readdirMock.mockResolvedValue([]);
+    state.readFileMock.mockResolvedValue("{}");
     state.insertDiscoveredMovieMock.mockReturnValue(1);
     state.refreshDiscoveredMovieMock.mockReturnValue(1);
     state.searchMovieOnTmdbMock.mockResolvedValue(null);
     state.createScanRecordMock.mockReturnValue({ id: 1 });
+    state.failInterruptedScansMock.mockReturnValue(0);
     state.listMoviesWithMetadataFileMock.mockReturnValue([]);
     state.findMovieIdByMetadataFileMock.mockReturnValue(null);
     state.deleteMoviesByMetadataFileMock.mockReturnValue(1);
-    state.readdirSyncMock.mockReturnValue([]);
+  });
+
+  it("marks leftover running scans as failed before starting a new one", async () => {
+    state.getMediaPathsMock.mockReturnValue({
+      moviesPath: "D:/media/movies",
+      tvPath: null,
+    });
+
+    const service = await import("../../src/modules/media-watcher/index.js");
+
+    await service.setupFileWatchers();
+
+    await vi.waitFor(() => {
+      expect(state.createScanRecordMock).toHaveBeenCalled();
+    });
+
+    expect(state.failInterruptedScansMock).toHaveBeenCalledTimes(1);
+    const failedAt = state.failInterruptedScansMock.mock.invocationCallOrder[0];
+    const createdAt = state.createScanRecordMock.mock.invocationCallOrder[0];
+    expect(failedAt).toBeLessThan(createdAt ?? Number.POSITIVE_INFINITY);
   });
 
   it("ignores nested metadata json on unlink", async () => {
-    state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "D:/media/movies",
       tvPath: null,
@@ -186,7 +213,6 @@ describe("mediaWatcherService delete cleanup", () => {
   }, 15000);
 
   it("deletes the movie row by metadata_file when a top-level json is removed", async () => {
-    state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "D:/media/movies",
       tvPath: null,
@@ -209,7 +235,6 @@ describe("mediaWatcherService delete cleanup", () => {
   }, 15000);
 
   it("closes active watchers on stopAllWatchers", async () => {
-    state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "D:/media/movies",
       tvPath: null,
@@ -224,12 +249,11 @@ describe("mediaWatcherService delete cleanup", () => {
   });
 
   it("imports movie and extras from DVD/Extras JSON format", async () => {
-    state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "C:/temp/leffat",
       tvPath: null,
     });
-    state.readFileSyncMock.mockReturnValue(
+    state.readFileMock.mockResolvedValue(
       JSON.stringify({
         DVD: {
           Title: "Big Fish",
@@ -294,12 +318,11 @@ describe("mediaWatcherService delete cleanup", () => {
   });
 
   it("imports movie-only JSON and deletes exact imported URL on unlink", async () => {
-    state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "C:/temp/leffat",
       tvPath: null,
     });
-    state.readFileSyncMock.mockReturnValue(
+    state.readFileMock.mockResolvedValue(
       JSON.stringify({
         DVD: {
           Title: "Jackie Brown",
@@ -343,14 +366,13 @@ describe("mediaWatcherService delete cleanup", () => {
   });
 
   it("retries TMDB search when a movie exists but has no enrichment", async () => {
-    state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "C:/temp/leffat",
       tvPath: null,
     });
     state.movieExistsByUrlMock.mockReturnValue(true);
     state.isMissingTmdbMetadataMock.mockReturnValue(true);
-    state.readFileSyncMock.mockReturnValue(
+    state.readFileMock.mockResolvedValue(
       JSON.stringify({
         DVD: {
           Title: "Big Fish",
@@ -390,12 +412,11 @@ describe("mediaWatcherService delete cleanup", () => {
   });
 
   it("maps TMDB snake_case cast fields onto local columns", async () => {
-    state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "C:/temp/leffat",
       tvPath: null,
     });
-    state.readFileSyncMock.mockReturnValue(
+    state.readFileMock.mockResolvedValue(
       JSON.stringify({
         DVD: {
           Title: "Star Wars: Episode IV - A New Hope",
@@ -487,7 +508,7 @@ describe("mediaWatcherService delete cleanup", () => {
   });
 
   it("collects only top-level JSON metadata files", async () => {
-    state.readdirSyncMock.mockReturnValue([
+    state.readdirMock.mockResolvedValue([
       "big-fish.json",
       "Jackie Brown",
       "snowpiercer.json",
@@ -497,14 +518,13 @@ describe("mediaWatcherService delete cleanup", () => {
     const { collectJsonMetadataFiles } =
       await import("../../src/modules/media-watcher/mediaWatcherService.js");
 
-    expect(collectJsonMetadataFiles("/media/movies")).toEqual([
+    await expect(collectJsonMetadataFiles("/media/movies")).resolves.toEqual([
       "big-fish.json",
       "snowpiercer.json",
     ]);
   });
 
   it("ignores nested metadata json on add", async () => {
-    state.existsSyncMock.mockReturnValue(true);
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "C:/temp/leffat",
       tvPath: null,
@@ -520,7 +540,30 @@ describe("mediaWatcherService delete cleanup", () => {
     await addHandler("C:/temp/leffat/Big Fish/nested.json");
 
     expect(state.insertDiscoveredMovieMock).not.toHaveBeenCalled();
-    expect(state.readFileSyncMock).not.toHaveBeenCalled();
+    expect(state.readFileMock).not.toHaveBeenCalled();
+  });
+
+  it("skips reading JSON on rescan when metadata_file is already catalogued", async () => {
+    state.getMediaPathsMock.mockReturnValue({
+      moviesPath: "C:/temp/leffat",
+      tvPath: null,
+    });
+    state.findMovieIdByMetadataFileMock.mockReturnValue(42);
+    state.isMissingTmdbMetadataByIdMock.mockReturnValue(false);
+
+    const service = await import("../../src/modules/media-watcher/index.js");
+
+    await service.setupFileWatchers();
+
+    const addHandler = state.handlers["add"];
+    expect(addHandler).toBeTypeOf("function");
+
+    await addHandler("C:/temp/leffat/big-fish.json");
+
+    expect(state.readFileMock).not.toHaveBeenCalled();
+    expect(state.searchMovieOnTmdbMock).not.toHaveBeenCalled();
+    expect(state.insertDiscoveredMovieMock).not.toHaveBeenCalled();
+    expect(state.refreshDiscoveredMovieMock).not.toHaveBeenCalled();
   });
 
   it("removes catalog rows whose top-level metadata file is gone", async () => {
@@ -529,15 +572,17 @@ describe("mediaWatcherService delete cleanup", () => {
       "C:/other/library/other.json",
     );
 
-    state.existsSyncMock.mockImplementation((filePath: string) => {
+    state.accessMock.mockImplementation(async (filePath: string) => {
       const normalized = String(filePath).replace(/\\/g, "/");
-      return !normalized.toLowerCase().endsWith("missing.json");
+      if (normalized.toLowerCase().endsWith("missing.json")) {
+        throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      }
     });
     state.getMediaPathsMock.mockReturnValue({
       moviesPath: "C:/temp/leffat",
       tvPath: null,
     });
-    state.readdirSyncMock.mockReturnValue([]);
+    state.readdirMock.mockResolvedValue([]);
     state.listMoviesWithMetadataFileMock.mockReturnValue([
       {
         id: 7,

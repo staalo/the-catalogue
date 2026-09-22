@@ -110,6 +110,29 @@ export function createScanRecord(
 }
 
 /**
+ * Mark scans still "running" from a previous process as failed.
+ * Called once at startup, before a new scan row is inserted.
+ */
+export function failInterruptedScans(): number {
+  const result = db
+    .update(scanStatus)
+    .set({
+      status: "failed",
+      endTime: new Date().toISOString(),
+      errorLog: JSON.stringify([
+        {
+          error: "Scan interrupted",
+          message: "The service stopped before this scan finished.",
+        },
+      ]),
+    })
+    .where(eq(scanStatus.status, "running"))
+    .run();
+
+  return result.changes;
+}
+
+/**
  * Update scan progress and status.
  */
 export function updateScanRecord(
@@ -161,21 +184,15 @@ export function movieExistsByUrl(url: string): boolean {
   return !!result;
 }
 
-/**
- * True when a row exists for this URL but has no TMDB metadata yet,
- * or stored credits are missing TMDB fields (e.g. credit_id).
- * Lets a later scan retry enrichment without duplicating the movie.
- */
-export function isMissingTmdbMetadata(url: string): boolean {
+function movieNeedsTmdbEnrichment(movieId: number): boolean {
   const result = db
     .select({
-      id: localMovies.id,
       overview: localMovies.overview,
       posterPath: localMovies.posterPath,
       imdbId: localMovies.imdbId,
     })
     .from(localMovies)
-    .where(eq(localMovies.url, url))
+    .where(eq(localMovies.id, movieId))
     .limit(1)
     .get();
 
@@ -192,7 +209,7 @@ export function isMissingTmdbMetadata(url: string): boolean {
     .from(localMovieCast)
     .where(
       and(
-        eq(localMovieCast.localMovieId, result.id),
+        eq(localMovieCast.localMovieId, movieId),
         isNull(localMovieCast.creditId),
       ),
     )
@@ -200,6 +217,34 @@ export function isMissingTmdbMetadata(url: string): boolean {
     .get();
 
   return !!incompleteCast;
+}
+
+/**
+ * True when this movie has no TMDB metadata yet,
+ * or stored credits are missing TMDB fields (e.g. credit_id).
+ */
+export function isMissingTmdbMetadataById(movieId: number): boolean {
+  return movieNeedsTmdbEnrichment(movieId);
+}
+
+/**
+ * True when a row exists for this URL but has no TMDB metadata yet,
+ * or stored credits are missing TMDB fields (e.g. credit_id).
+ * Lets a later scan retry enrichment without duplicating the movie.
+ */
+export function isMissingTmdbMetadata(url: string): boolean {
+  const result = db
+    .select({ id: localMovies.id })
+    .from(localMovies)
+    .where(eq(localMovies.url, url))
+    .limit(1)
+    .get();
+
+  if (!result) {
+    return false;
+  }
+
+  return movieNeedsTmdbEnrichment(result.id);
 }
 
 /**

@@ -2,7 +2,7 @@
  * Media Watcher Service - scans media directories and enriches with TMDB metadata.
  */
 
-import fs from "node:fs";
+import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import chokidar from "chokidar";
 import { db } from "../../infra/db/client.js";
@@ -93,7 +93,7 @@ export async function scanMediaDirectory(
     };
   }
 
-  if (!fs.existsSync(mediaPath)) {
+  if (!(await pathExists(mediaPath))) {
     return {
       scanId: 0,
       success: false,
@@ -144,18 +144,26 @@ export async function scanMediaDirectory(
 
 /**
  * Startup entrypoint:
- * 1) scan configured directories
- * 2) start chokidar watchers for JSON metadata changes
+ * 1) mark scans left running by a previous process as failed
+ * 2) scan configured directories
+ * 3) start chokidar watchers for JSON metadata changes
  */
 export async function setupFileWatchers(): Promise<void> {
+  const interrupted = mediaWatcherRepo.failInterruptedScans();
+  if (interrupted > 0) {
+    console.log(
+      `[MediaWatcher] Marked ${interrupted} interrupted scan(s) as failed.`,
+    );
+  }
+
   const mediaPaths = getMediaPaths();
 
-  if (mediaPaths.moviesPath && fs.existsSync(mediaPaths.moviesPath)) {
+  if (mediaPaths.moviesPath && (await pathExists(mediaPaths.moviesPath))) {
     void scanMediaDirectory(STARTUP_SCAN_OWNER, "movies");
     setupWatcherForDirectory(mediaPaths.moviesPath);
   }
 
-  if (mediaPaths.tvPath && fs.existsSync(mediaPaths.tvPath)) {
+  if (mediaPaths.tvPath && (await pathExists(mediaPaths.tvPath))) {
     void scanMediaDirectory(STARTUP_SCAN_OWNER, "tv");
     setupWatcherForDirectory(mediaPaths.tvPath);
   }
@@ -212,15 +220,11 @@ function setupWatcherForDirectory(dirPath: string): void {
   });
 
   watcher
-    .on("add", (filePath: string) => {
-      void onJsonMetadataChanged(filePath, "add");
-    })
-    .on("change", (filePath: string) => {
-      void onJsonMetadataChanged(filePath, "change");
-    })
-    .on("unlink", (filePath: string) => {
-      void onJsonMetadataDeleted(filePath);
-    })
+    .on("add", (filePath: string) => onJsonMetadataChanged(filePath, "add"))
+    .on("change", (filePath: string) =>
+      onJsonMetadataChanged(filePath, "change"),
+    )
+    .on("unlink", (filePath: string) => onJsonMetadataDeleted(filePath))
     .on("error", (error: Error) => {
       console.error(`[MediaWatcher] Watcher error for ${dirPath}:`, error);
     });
@@ -285,15 +289,29 @@ async function processJsonMetadataFile(
     return;
   }
 
+  const metadataFile = normalizeMetadataFilePath(jsonFilePath);
+
+  // Rescan/startup: skip the JSON and video-file I/O when this metadata
+  // path is already catalogued and TMDB enrichment is complete.
+  if (eventType === "add") {
+    const existingId = mediaWatcherRepo.findMovieIdByMetadataFile(metadataFile);
+    if (
+      existingId != null &&
+      !mediaWatcherRepo.isMissingTmdbMetadataById(existingId)
+    ) {
+      return;
+    }
+  }
+
   try {
-    const jsonContent = fs.readFileSync(jsonFilePath, "utf-8");
+    const jsonContent = await readFile(jsonFilePath, "utf-8");
     const metadata = JSON.parse(jsonContent) as LegacyMovieJson;
 
     const watcherRoot =
       findBestWatcherRoot(jsonFilePath) ??
       libraryRoot ??
       path.dirname(jsonFilePath);
-    const parsed = parseLegacyMovieJson(metadata, watcherRoot, jsonFilePath);
+    const parsed = parseLegacyMovieJson(metadata, watcherRoot);
 
     if (!parsed) {
       console.warn(
@@ -302,7 +320,6 @@ async function processJsonMetadataFile(
       return;
     }
 
-    const metadataFile = normalizeMetadataFilePath(jsonFilePath);
     const existingByMetadata =
       mediaWatcherRepo.findMovieIdByMetadataFile(metadataFile);
     const alreadyExists =
@@ -314,11 +331,18 @@ async function processJsonMetadataFile(
     const shouldRefresh =
       eventType === "change" ||
       urlChanged ||
-      (alreadyExists && mediaWatcherRepo.isMissingTmdbMetadata(parsed.movieUrl));
+      (alreadyExists &&
+        mediaWatcherRepo.isMissingTmdbMetadata(parsed.movieUrl));
 
     if (alreadyExists && !shouldRefresh) {
       mediaWatcherRepo.setMetadataFileIfMissing(parsed.movieUrl, metadataFile);
       return;
+    }
+
+    if (!(await pathExists(parsed.movieUrl))) {
+      console.warn(
+        `[MediaWatcher] Movie file from JSON does not exist: ${parsed.movieUrl} (source: ${jsonFilePath})`,
+      );
     }
 
     const tmdbResult = await searchMovieOnTmdb(parsed.title, parsed.year);
@@ -425,7 +449,6 @@ async function processJsonMetadataFile(
 function parseLegacyMovieJson(
   metadata: LegacyMovieJson,
   watcherRoot: string,
-  jsonFilePath: string,
 ): ParsedMetadata | null {
   const dvd = metadata.DVD;
   if (!dvd?.File) {
@@ -470,12 +493,6 @@ function parseLegacyMovieJson(
         url: extraResolvedPath,
       });
     }
-  }
-
-  if (!fs.existsSync(resolvedMoviePath)) {
-    console.warn(
-      `[MediaWatcher] Movie file from JSON does not exist: ${resolvedMoviePath} (source: ${jsonFilePath})`,
-    );
   }
 
   const parsed: ParsedMetadata = {
@@ -552,7 +569,9 @@ function isMetadataUnderLibrary(
   return samePath(path.dirname(metadataFile), libraryRoot);
 }
 
-function reconcileMissingMetadataFiles(mediaPath: string): number {
+async function reconcileMissingMetadataFiles(
+  mediaPath: string,
+): Promise<number> {
   let removed = 0;
 
   for (const movie of mediaWatcherRepo.listMoviesWithMetadataFile()) {
@@ -560,9 +579,13 @@ function reconcileMissingMetadataFiles(mediaPath: string): number {
       continue;
     }
 
-    if (!fs.existsSync(movie.metadataFile)) {
-      removed += mediaWatcherRepo.deleteMoviesByMetadataFile(movie.metadataFile);
+    if (!(await pathExists(movie.metadataFile))) {
+      removed += mediaWatcherRepo.deleteMoviesByMetadataFile(
+        movie.metadataFile,
+      );
     }
+
+    await yieldToEventLoop();
   }
 
   return removed;
@@ -596,16 +619,17 @@ function isJsonMetadataFile(fileName: string): boolean {
  * Collect JSON metadata files in a library root.
  * Only the top-level folder is considered; nested JSON is ignored.
  */
-export function collectJsonMetadataFiles(mediaPath: string): string[] {
-  return fs
-    .readdirSync(mediaPath)
-    .filter(
-      (file) =>
-        typeof file === "string" &&
-        isJsonMetadataFile(file) &&
-        !file.includes("/") &&
-        !file.includes("\\"),
-    );
+export async function collectJsonMetadataFiles(
+  mediaPath: string,
+): Promise<string[]> {
+  const entries = await readdir(mediaPath);
+  return entries.filter(
+    (file) =>
+      typeof file === "string" &&
+      isJsonMetadataFile(file) &&
+      !file.includes("/") &&
+      !file.includes("\\"),
+  );
 }
 
 async function performScan(scanId: number, mediaPath: string): Promise<void> {
@@ -613,7 +637,7 @@ async function performScan(scanId: number, mediaPath: string): Promise<void> {
   let processedCount = 0;
   let skippedCount = 0;
 
-  const jsonFiles = collectJsonMetadataFiles(mediaPath);
+  const jsonFiles = await collectJsonMetadataFiles(mediaPath);
 
   mediaWatcherRepo.updateScanRecord(scanId, {
     totalFiles: jsonFiles.length,
@@ -640,7 +664,22 @@ async function performScan(scanId: number, mediaPath: string): Promise<void> {
         errorLog: JSON.stringify(errors),
       });
     }
+
+    await yieldToEventLoop();
   }
 
-  reconcileMissingMetadataFiles(mediaPath);
+  await reconcileMissingMetadataFiles(mediaPath);
+}
+
+async function pathExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
 }

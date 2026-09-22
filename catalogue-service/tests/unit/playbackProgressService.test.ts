@@ -6,7 +6,7 @@ const listProgressMock = vi.fn();
 const upsertProgressMock = vi.fn();
 
 vi.mock("../../src/infra/db/repositories/localMovieRepository.js", () => ({
-  getMovieById: getMovieByIdMock,
+  getMovieByIdWithExtras: getMovieByIdMock,
 }));
 
 vi.mock("../../src/modules/media-paths/mediaPathService.js", () => ({

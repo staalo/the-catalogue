@@ -11,7 +11,7 @@ vi.mock("../../src/modules/media-paths/mediaPathService.js", () => ({
 }));
 
 vi.mock("../../src/infra/db/repositories/localMovieRepository.js", () => ({
-  getMovieById: getMovieByIdMock,
+  getMovieByIdWithExtras: getMovieByIdMock,
 }));
 
 describe("streamService", () => {
