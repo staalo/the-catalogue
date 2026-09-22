@@ -2,8 +2,9 @@ import bcrypt from "bcrypt";
 import {
   createUser,
   findUserByEmail,
+  findUserByEmailOrUserName,
   findUserById,
-  findUserByUserName,
+  isUniqueConstraintError,
 } from "../../infra/db/repositories/userRepository.js";
 import {
   BadRequestError,
@@ -74,21 +75,32 @@ export async function registerUser(
 
   assertPasswordMeetsIdentityRules(input.password);
 
-  if (findUserByEmail(email) || findUserByUserName(userName)) {
-    throw new ConflictError("An account with this email or user name already exists");
+  if (findUserByEmailOrUserName(email, userName)) {
+    throw new ConflictError(
+      "An account with this email or user name already exists",
+    );
   }
 
-  const user = await createUser({
-    userName,
-    email,
-    password: input.password,
-  });
+  try {
+    const user = await createUser({
+      userName,
+      email,
+      password: input.password,
+    });
 
-  return {
-    id: user.id,
-    email: user.email ?? email,
-    userName: user.userName,
-  };
+    return {
+      id: user.id,
+      email: user.email ?? email,
+      userName: user.userName,
+    };
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new ConflictError(
+        "An account with this email or user name already exists",
+      );
+    }
+    throw error;
+  }
 }
 
 /**

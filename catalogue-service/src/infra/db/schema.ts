@@ -17,6 +17,7 @@ export const users = sqliteTable('users', {
   createdAt:            text('created_at').notNull().default('CURRENT_TIMESTAMP'),
 }, (t) => [
   uniqueIndex('idx_users_username').on(t.normalizedUserName),
+  uniqueIndex('idx_users_email').on(t.normalizedEmail),
 ]);
 
 // ---------------------------------------------------------------------------

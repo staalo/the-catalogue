@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 const compareMock = vi.fn();
 const findUserByEmailMock = vi.fn();
 const findUserByIdMock = vi.fn();
-const findUserByUserNameMock = vi.fn();
+const findUserByEmailOrUserNameMock = vi.fn();
 const createUserMock = vi.fn();
 
 vi.mock("bcrypt", () => ({
@@ -15,8 +15,19 @@ vi.mock("bcrypt", () => ({
 vi.mock("../../src/infra/db/repositories/userRepository.js", () => ({
   findUserByEmail: findUserByEmailMock,
   findUserById: findUserByIdMock,
-  findUserByUserName: findUserByUserNameMock,
+  findUserByEmailOrUserName: findUserByEmailOrUserNameMock,
   createUser: createUserMock,
+  isUniqueConstraintError: (error: unknown) => {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+    const code =
+      "code" in error && typeof error.code === "string" ? error.code : "";
+    return (
+      code === "SQLITE_CONSTRAINT_UNIQUE" ||
+      /UNIQUE constraint failed/i.test(error.message)
+    );
+  },
 }));
 
 describe("authService", () => {
@@ -87,8 +98,7 @@ describe("authService", () => {
   });
 
   it("registers a user using email as the default username", async () => {
-    findUserByEmailMock.mockReturnValueOnce(undefined);
-    findUserByUserNameMock.mockReturnValueOnce(undefined);
+    findUserByEmailOrUserNameMock.mockReturnValueOnce(undefined);
     createUserMock.mockResolvedValueOnce({
       id: "u-new",
       userName: "new@example.com",
@@ -106,11 +116,14 @@ describe("authService", () => {
       email: "new@example.com",
       userName: "new@example.com",
     });
+    expect(findUserByEmailOrUserNameMock).toHaveBeenCalledWith(
+      "new@example.com",
+      "new@example.com",
+    );
   });
 
   it("registers a user with an optional username", async () => {
-    findUserByEmailMock.mockReturnValueOnce(undefined);
-    findUserByUserNameMock.mockReturnValueOnce(undefined);
+    findUserByEmailOrUserNameMock.mockReturnValueOnce(undefined);
     createUserMock.mockResolvedValueOnce({
       id: "u-path",
       userName: "alice",
@@ -144,7 +157,7 @@ describe("authService", () => {
       registerUser({ email: "a@b.c", password: "secret123" }),
     ).rejects.toMatchObject({ statusCode: 400 });
 
-    findUserByEmailMock.mockReturnValueOnce({
+    findUserByEmailOrUserNameMock.mockReturnValueOnce({
       id: "u-1",
       userName: "taken",
       email: "taken@example.com",
@@ -153,6 +166,24 @@ describe("authService", () => {
     await expect(
       registerUser({
         email: "taken@example.com",
+        password: "!Salasana1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("maps a unique-constraint race on insert to ConflictError", async () => {
+    findUserByEmailOrUserNameMock.mockReturnValueOnce(undefined);
+    const uniqueError = Object.assign(new Error("UNIQUE constraint failed: users.normalized_email"), {
+      code: "SQLITE_CONSTRAINT_UNIQUE",
+    });
+    createUserMock.mockRejectedValueOnce(uniqueError);
+
+    const { registerUser } =
+      await import("../../src/modules/auth/authService.js");
+
+    await expect(
+      registerUser({
+        email: "race@example.com",
         password: "!Salasana1",
       }),
     ).rejects.toMatchObject({ statusCode: 409 });

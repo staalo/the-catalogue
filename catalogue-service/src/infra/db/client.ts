@@ -27,6 +27,9 @@ sqlite.exec(`
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
 	ON users (normalized_user_name);
 
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email
+	ON users (normalized_email);
+
 	CREATE TABLE IF NOT EXISTS local_movies (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		adult INTEGER NOT NULL DEFAULT 0,
