@@ -22,9 +22,10 @@ tests {
     expect(res.getStatus()).to.equal(201);
   });
 
-  test("response has email and null moviesPath", function() {
+  test("response has account fields only", function() {
     const body = res.getBody();
     expect(body).to.have.property("email");
-    expect(body).to.have.property("moviesPath");
+    expect(body).to.have.property("userName");
+    expect(body).not.to.have.property("moviesPath");
   });
 }

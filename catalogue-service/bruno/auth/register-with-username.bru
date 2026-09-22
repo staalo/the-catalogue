@@ -1,5 +1,5 @@
 meta {
-  name: Register with movies path
+  name: Register with username
   type: http
   seq: 1
 }
@@ -12,15 +12,18 @@ post {
 
 body:json {
   {
-    "email": "withpath@example.com",
+    "email": "withusername@example.com",
     "password": "!Salasana1",
-    "userName": "withpath",
-    "moviesPath": "C:/temp/leffat"
+    "userName": "withusername"
   }
 }
 
 tests {
   test("status is 201", function() {
     expect(res.getStatus()).to.equal(201);
+  });
+
+  test("response includes the chosen username", function() {
+    expect(res.getBody().userName).to.equal("withusername");
   });
 }

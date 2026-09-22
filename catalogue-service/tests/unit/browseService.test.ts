@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 const getMediaPathsMock = vi.fn();
 const getMoviesPaginatedMock = vi.fn();
 
-vi.mock("../../src/infra/db/repositories/localMediaRepository.js", () => ({
+vi.mock("../../src/modules/media-paths/mediaPathService.js", () => ({
   getMediaPaths: getMediaPathsMock,
 }));
 
@@ -13,11 +13,11 @@ vi.mock("../../src/infra/db/repositories/localMovieRepository.js", () => ({
 
 describe("browseService", () => {
   it("returns empty result when no movies path is configured", async () => {
-    getMediaPathsMock.mockReturnValueOnce(null);
+    getMediaPathsMock.mockReturnValueOnce({ moviesPath: null, tvPath: null });
 
     const { browseMovies } =
       await import("../../src/modules/browse/browseService.js");
-    const result = await browseMovies("alice", 2);
+    const result = await browseMovies(2);
 
     expect(result).toEqual({
       page: 2,
@@ -110,7 +110,7 @@ describe("browseService", () => {
 
     const { browseMovies } =
       await import("../../src/modules/browse/browseService.js");
-    const result = await browseMovies("alice", 1);
+    const result = await browseMovies(1);
 
     expect(getMoviesPaginatedMock).toHaveBeenCalledWith("D:/media/movies", 1);
     expect(result.totalPages).toBe(2);

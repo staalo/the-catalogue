@@ -5,8 +5,6 @@ const findUserByEmailMock = vi.fn();
 const findUserByIdMock = vi.fn();
 const findUserByUserNameMock = vi.fn();
 const createUserMock = vi.fn();
-const upsertMediaPathsMock = vi.fn();
-const resolveExistingDirectoryMock = vi.fn();
 
 vi.mock("bcrypt", () => ({
   default: {
@@ -19,14 +17,6 @@ vi.mock("../../src/infra/db/repositories/userRepository.js", () => ({
   findUserById: findUserByIdMock,
   findUserByUserName: findUserByUserNameMock,
   createUser: createUserMock,
-}));
-
-vi.mock("../../src/infra/db/repositories/localMediaRepository.js", () => ({
-  upsertMediaPaths: upsertMediaPathsMock,
-}));
-
-vi.mock("../../src/modules/media-paths/mediaPathService.js", () => ({
-  resolveExistingDirectory: resolveExistingDirectoryMock,
 }));
 
 describe("authService", () => {
@@ -96,7 +86,7 @@ describe("authService", () => {
     });
   });
 
-  it("registers a user without a media path", async () => {
+  it("registers a user using email as the default username", async () => {
     findUserByEmailMock.mockReturnValueOnce(undefined);
     findUserByUserNameMock.mockReturnValueOnce(undefined);
     createUserMock.mockResolvedValueOnce({
@@ -105,11 +95,6 @@ describe("authService", () => {
       email: "new@example.com",
       passwordHash: "hash",
     });
-    upsertMediaPathsMock.mockReturnValueOnce({
-      moviesPath: null,
-      tvPath: null,
-    });
-
     const { registerUser } =
       await import("../../src/modules/auth/authService.js");
     const result = await registerUser({
@@ -121,28 +106,17 @@ describe("authService", () => {
       id: "u-new",
       email: "new@example.com",
       userName: "new@example.com",
-      moviesPath: null,
-    });
-    expect(resolveExistingDirectoryMock).not.toHaveBeenCalled();
-    expect(upsertMediaPathsMock).toHaveBeenCalledWith("new@example.com", {
-      moviesPath: null,
-      tvPath: null,
     });
   });
 
-  it("registers a user with a movies path", async () => {
+  it("registers a user with an optional username", async () => {
     findUserByEmailMock.mockReturnValueOnce(undefined);
     findUserByUserNameMock.mockReturnValueOnce(undefined);
-    resolveExistingDirectoryMock.mockResolvedValueOnce("C:\\media\\movies");
     createUserMock.mockResolvedValueOnce({
       id: "u-path",
       userName: "alice",
       email: "alice@example.com",
       passwordHash: "hash",
-    });
-    upsertMediaPathsMock.mockReturnValueOnce({
-      moviesPath: "C:\\media\\movies",
-      tvPath: null,
     });
 
     const { registerUser } =
@@ -151,14 +125,12 @@ describe("authService", () => {
       email: "alice@example.com",
       password: "!Salasana1",
       userName: "alice",
-      moviesPath: "C:/media/movies",
     });
 
-    expect(result.moviesPath).toBe("C:\\media\\movies");
-    expect(result.userName).toBe("alice");
-    expect(upsertMediaPathsMock).toHaveBeenCalledWith("alice", {
-      moviesPath: "C:\\media\\movies",
-      tvPath: null,
+    expect(result).toEqual({
+      id: "u-path",
+      email: "alice@example.com",
+      userName: "alice",
     });
   });
 

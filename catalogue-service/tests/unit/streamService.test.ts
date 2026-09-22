@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const getMediaPathsMock = vi.fn();
 const getMovieByIdMock = vi.fn();
 
-vi.mock("../../src/infra/db/repositories/localMediaRepository.js", () => ({
+vi.mock("../../src/modules/media-paths/mediaPathService.js", () => ({
   getMediaPaths: getMediaPathsMock,
 }));
 
@@ -40,7 +40,7 @@ describe("streamService", () => {
 
     const { tryGetMovieStream, StreamStatus } =
       await import("../../src/modules/stream/streamService.js");
-    const [status, file] = await tryGetMovieStream("alice", 1);
+    const [status, file] = await tryGetMovieStream(1);
 
     expect(status).toBe(StreamStatus.Ok);
     expect(file?.contentType).toBe("video/mp4");
@@ -61,7 +61,7 @@ describe("streamService", () => {
 
     const { tryGetExtraStream, StreamStatus } =
       await import("../../src/modules/stream/streamService.js");
-    const [status, file] = await tryGetExtraStream("alice", 1, 9);
+    const [status, file] = await tryGetExtraStream(1, 9);
 
     expect(status).toBe(StreamStatus.Ok);
     expect(file?.filePath).toBe(path.resolve(extraPath));
@@ -76,7 +76,7 @@ describe("streamService", () => {
 
     const { tryGetMovieStream, StreamStatus } =
       await import("../../src/modules/stream/streamService.js");
-    const [status, file] = await tryGetMovieStream("alice", 1);
+    const [status, file] = await tryGetMovieStream(1);
 
     expect(status).toBe(StreamStatus.NotFound);
     expect(file).toBeNull();

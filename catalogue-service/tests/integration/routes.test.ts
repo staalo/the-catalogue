@@ -220,7 +220,6 @@ describe("route behavior", () => {
       id: "u-300",
       email: "new@example.com",
       userName: "new@example.com",
-      moviesPath: null,
     });
 
     const registerRes = await app.inject({
@@ -233,7 +232,6 @@ describe("route behavior", () => {
     expect(registerRes.json()).toEqual({
       email: "new@example.com",
       userName: "new@example.com",
-      moviesPath: null,
     });
 
     const cookie = getCookie(
@@ -366,7 +364,7 @@ describe("route behavior", () => {
       headers: { cookie },
     });
 
-    expect(browseMoviesMock).toHaveBeenCalledWith("bob", 2);
+    expect(browseMoviesMock).toHaveBeenCalledWith(2);
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
       page: 1,
@@ -431,12 +429,11 @@ describe("route behavior", () => {
 
     expect(listRes.statusCode).toBe(200);
     expect(listRes.json()).toEqual({ items: [item] });
-    expect(getMoviePlaybackProgressMock).toHaveBeenCalledWith("u-4", "dana");
+    expect(getMoviePlaybackProgressMock).toHaveBeenCalledWith("u-4");
     expect(updateRes.statusCode).toBe(200);
     expect(updateRes.json()).toEqual(item);
     expect(saveMoviePlaybackProgressMock).toHaveBeenCalledWith(
       "u-4",
-      "dana",
       7,
       38,
     );

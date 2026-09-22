@@ -14,11 +14,10 @@ export const config = {
   port: parseInt(process.env["PORT"] ?? "3000", 10),
   databaseUrl: process.env["DATABASE_URL"] ?? "./data/catalog.db",
   sessionSecret,
-  defaultMoviesPath:
+  sharedMoviesPath:
     process.env["MOVIES_PATH"] ?? process.env["MEDIA_MOVIES_PATH"] ?? null,
-  defaultTvPath:
+  sharedTvPath:
     process.env["TV_PATH"] ?? process.env["MEDIA_TV_PATH"] ?? null,
-  mediaBootstrapUser: process.env["MEDIA_BOOTSTRAP_USER"] ?? "system",
   publicDir:
     process.env["PUBLIC_DIR"] ??
     path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../public"),

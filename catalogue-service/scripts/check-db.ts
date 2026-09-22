@@ -3,20 +3,13 @@
  * Usage: npx tsx scripts/check-db.ts
  */
 import { db } from '../src/infra/db/client.js';
-import { users, localMedia, localMovies } from '../src/infra/db/schema.js';
+import { users, localMovies } from '../src/infra/db/schema.js';
 
 console.log('\n=== Users ===');
 const allUsers = db.select().from(users).all();
 console.log(`Total users: ${allUsers.length}`);
 allUsers.forEach(u => {
   console.log(`  ID: ${u.id}, userName: ${u.userName}, email: ${u.email}`);
-});
-
-console.log('\n=== Local Media ===');
-const allMedia = db.select().from(localMedia).all();
-console.log(`Total media entries: ${allMedia.length}`);
-allMedia.forEach(m => {
-  console.log(`  ID: ${m.id}, userName: ${m.userName}, moviesPath: ${m.moviesPath}`);
 });
 
 console.log('\n=== Local Movies ===');

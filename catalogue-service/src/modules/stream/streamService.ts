@@ -1,6 +1,6 @@
 import path from "node:path";
 import { getMovieById } from "../../infra/db/repositories/localMovieRepository.js";
-import { getMediaPaths } from "../../infra/db/repositories/localMediaRepository.js";
+import { getMediaPaths } from "../media-paths/mediaPathService.js";
 import {
   isPathUnderDirectory,
   getContentType,
@@ -20,13 +20,11 @@ export interface StreamFile {
 }
 
 /**
- * Get the authorized movies path for a user.
- * Returns null if user has no media configured or path doesn't exist.
+ * Get the shared authorized movies path.
+ * Returns null if the path is not configured or does not exist.
  */
-async function getAuthorizedMoviesPath(
-  userName: string,
-): Promise<string | null> {
-  const localMedia = getMediaPaths(userName);
+async function getAuthorizedMoviesPath(): Promise<string | null> {
+  const localMedia = getMediaPaths();
 
   if (!localMedia || !localMedia.moviesPath) {
     return null;
@@ -73,10 +71,9 @@ async function tryResolveFile(
  * Returns the movie file path and content type, or an error status.
  */
 export async function tryGetMovieStream(
-  userName: string,
   movieId: number,
 ): Promise<[StreamStatus, StreamFile | null]> {
-  const moviesPath = await getAuthorizedMoviesPath(userName);
+  const moviesPath = await getAuthorizedMoviesPath();
   if (!moviesPath) {
     return [StreamStatus.Forbidden, null];
   }
@@ -93,11 +90,10 @@ export async function tryGetMovieStream(
  * Get a movie asset stream (e.g., HLS playlist, subtitle file).
  */
 export async function tryGetMovieAssetStream(
-  userName: string,
   movieId: number,
   relativePath: string,
 ): Promise<[StreamStatus, StreamFile | null]> {
-  const moviesPath = await getAuthorizedMoviesPath(userName);
+  const moviesPath = await getAuthorizedMoviesPath();
   if (!moviesPath) {
     return [StreamStatus.Forbidden, null];
   }
@@ -128,11 +124,10 @@ export async function tryGetMovieAssetStream(
  * Get an extra stream.
  */
 export async function tryGetExtraStream(
-  userName: string,
   movieId: number,
   extraId: number,
 ): Promise<[StreamStatus, StreamFile | null]> {
-  const moviesPath = await getAuthorizedMoviesPath(userName);
+  const moviesPath = await getAuthorizedMoviesPath();
   if (!moviesPath) {
     return [StreamStatus.Forbidden, null];
   }
@@ -158,12 +153,11 @@ export async function tryGetExtraStream(
  * Get an extra asset stream (e.g., HLS playlist for an extra).
  */
 export async function tryGetExtraAssetStream(
-  userName: string,
   movieId: number,
   extraId: number,
   relativePath: string,
 ): Promise<[StreamStatus, StreamFile | null]> {
-  const moviesPath = await getAuthorizedMoviesPath(userName);
+  const moviesPath = await getAuthorizedMoviesPath();
   if (!moviesPath) {
     return [StreamStatus.Forbidden, null];
   }

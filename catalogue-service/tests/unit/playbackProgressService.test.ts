@@ -9,7 +9,7 @@ vi.mock("../../src/infra/db/repositories/localMovieRepository.js", () => ({
   getMovieById: getMovieByIdMock,
 }));
 
-vi.mock("../../src/infra/db/repositories/localMediaRepository.js", () => ({
+vi.mock("../../src/modules/media-paths/mediaPathService.js", () => ({
   getMediaPaths: getMediaPathsMock,
 }));
 
@@ -40,8 +40,8 @@ describe("playbackProgressService", () => {
     const { getMoviePlaybackProgress } =
       await import("../../src/modules/playback/playbackProgressService.js");
 
-    expect(getMoviePlaybackProgress("user-1", "alice")).toEqual({ items });
-    expect(getMediaPathsMock).toHaveBeenCalledWith("alice");
+    expect(getMoviePlaybackProgress("user-1")).toEqual({ items });
+    expect(getMediaPathsMock).toHaveBeenCalledWith();
     expect(listProgressMock).toHaveBeenCalledWith("user-1", "/media/movies");
   });
 
@@ -50,10 +50,10 @@ describe("playbackProgressService", () => {
       await import("../../src/modules/playback/playbackProgressService.js");
 
     await expect(
-      saveMoviePlaybackProgress("user-1", "alice", 0, 20),
+      saveMoviePlaybackProgress("user-1", 0, 20),
     ).rejects.toMatchObject({ statusCode: 400 });
     await expect(
-      saveMoviePlaybackProgress("user-1", "alice", 1, Number.NaN),
+      saveMoviePlaybackProgress("user-1", 1, Number.NaN),
     ).rejects.toMatchObject({ statusCode: 400 });
   });
 
@@ -63,7 +63,7 @@ describe("playbackProgressService", () => {
       await import("../../src/modules/playback/playbackProgressService.js");
 
     await expect(
-      saveMoviePlaybackProgress("user-1", "alice", 99, 20),
+      saveMoviePlaybackProgress("user-1", 99, 20),
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 
@@ -88,8 +88,8 @@ describe("playbackProgressService", () => {
     const { saveMoviePlaybackProgress } =
       await import("../../src/modules/playback/playbackProgressService.js");
 
-    await saveMoviePlaybackProgress("user-1", "alice", 4, 120);
-    await saveMoviePlaybackProgress("user-1", "alice", 4, 97);
+    await saveMoviePlaybackProgress("user-1", 4, 120);
+    await saveMoviePlaybackProgress("user-1", 4, 97);
 
     expect(upsertProgressMock).toHaveBeenNthCalledWith(1, "user-1", 4, 100);
     expect(upsertProgressMock).toHaveBeenNthCalledWith(2, "user-1", 4, 97);
@@ -106,7 +106,7 @@ describe("playbackProgressService", () => {
       await import("../../src/modules/playback/playbackProgressService.js");
 
     await expect(
-      saveMoviePlaybackProgress("user-1", "alice", 4, 25),
+      saveMoviePlaybackProgress("user-1", 4, 25),
     ).rejects.toMatchObject({ statusCode: 403 });
     expect(upsertProgressMock).not.toHaveBeenCalled();
   });

@@ -6,11 +6,10 @@ import fs from "node:fs";
 import path from "node:path";
 import chokidar from "chokidar";
 import { db } from "../../infra/db/client.js";
-import { localMedia, scanStatus } from "../../infra/db/schema.js";
-import { config } from "../../app/config.js";
+import { scanStatus } from "../../infra/db/schema.js";
 import { eq } from "drizzle-orm";
-import { getMediaPaths } from "../../infra/db/repositories/localMediaRepository.js";
 import * as mediaWatcherRepo from "../../infra/db/repositories/mediaWatcherRepository.js";
+import { getMediaPaths } from "../media-paths/mediaPathService.js";
 import {
   searchMovieOnTmdb,
   extractTitleFromFilename,
@@ -33,6 +32,7 @@ const ALLOWED_EXTENSIONS = [
 
 const WATCHER_EXTENSION = ".json";
 const RECENT_EVENT_WINDOW_MS = 15000;
+const STARTUP_SCAN_OWNER = "system";
 
 const activeWatchers = new Map<string, chokidar.FSWatcher>();
 const recentEvents = new Map<string, number>();
@@ -87,20 +87,7 @@ export async function scanMediaDirectory(
   userName: string,
   scanType: "movies" | "tv" = "movies",
 ): Promise<ScanResult> {
-  const mediaPaths = getMediaPaths(userName);
-  if (!mediaPaths) {
-    return {
-      scanId: 0,
-      success: false,
-      message: "User has no media paths configured",
-      stats: {
-        totalFiles: 0,
-        processedFiles: 0,
-        skippedFiles: 0,
-        errorCount: 0,
-      },
-    };
-  }
+  const mediaPaths = getMediaPaths();
 
   const mediaPath =
     scanType === "movies" ? mediaPaths.moviesPath : mediaPaths.tvPath;
@@ -109,7 +96,7 @@ export async function scanMediaDirectory(
     return {
       scanId: 0,
       success: false,
-      message: `User has no ${scanType} path configured`,
+      message: `No shared ${scanType} path is configured`,
       stats: {
         totalFiles: 0,
         processedFiles: 0,
@@ -174,55 +161,23 @@ export async function scanMediaDirectory(
  * 2) start chokidar watchers for JSON metadata changes
  */
 export async function setupFileWatchers(): Promise<void> {
-  const records = ensureStartupMediaRecords();
+  const mediaPaths = getMediaPaths();
 
-  for (const record of records) {
-    if (
-      record.userName &&
-      record.moviesPath &&
-      fs.existsSync(record.moviesPath)
-    ) {
-      void scanMediaDirectory(record.userName, "movies");
-      setupWatcherForDirectory(record.moviesPath);
-    }
-
-    if (record.userName && record.tvPath && fs.existsSync(record.tvPath)) {
-      void scanMediaDirectory(record.userName, "tv");
-      setupWatcherForDirectory(record.tvPath);
-    }
-  }
-}
-
-function ensureStartupMediaRecords(): Array<{
-  id: number;
-  userName: string | null;
-  moviesPath: string | null;
-  tvPath: string | null;
-}> {
-  const existing = db.select().from(localMedia).all();
-  if (existing.length > 0) {
-    return existing;
+  if (mediaPaths.moviesPath && fs.existsSync(mediaPaths.moviesPath)) {
+    void scanMediaDirectory(STARTUP_SCAN_OWNER, "movies");
+    setupWatcherForDirectory(mediaPaths.moviesPath);
   }
 
-  const moviesPath = config.defaultMoviesPath;
-  const tvPath = config.defaultTvPath;
+  if (mediaPaths.tvPath && fs.existsSync(mediaPaths.tvPath)) {
+    void scanMediaDirectory(STARTUP_SCAN_OWNER, "tv");
+    setupWatcherForDirectory(mediaPaths.tvPath);
+  }
 
-  if (!moviesPath && !tvPath) {
+  if (!mediaPaths.moviesPath && !mediaPaths.tvPath) {
     console.warn(
-      "[MediaWatcher] No media paths configured. Set MOVIES_PATH and/or TV_PATH in .env for first-run startup scan.",
+      "[MediaWatcher] No shared media paths configured. Set MOVIES_PATH and/or TV_PATH in .env.",
     );
-    return existing;
   }
-
-  db.insert(localMedia)
-    .values({
-      userName: config.mediaBootstrapUser,
-      moviesPath,
-      tvPath,
-    })
-    .run();
-
-  return db.select().from(localMedia).all();
 }
 
 /** Stop all watchers when the app shuts down. */
@@ -620,18 +575,39 @@ function toFileKey(filePath: string): string {
   return process.platform === "win32" ? resolved.toLowerCase() : resolved;
 }
 
+function isJsonMetadataFile(fileName: string): boolean {
+  return fileName.toLowerCase().endsWith(WATCHER_EXTENSION);
+}
+
+/**
+ * Collect JSON metadata files under a library root.
+ * Minikube 9p mounts can list the root and open files by path, but fail
+ * `scandir` on some subdirectories. If a recursive walk throws, fall back
+ * to top-level JSON files so the scan still imports the library.
+ */
+export function collectJsonMetadataFiles(mediaPath: string): string[] {
+  try {
+    return (fs.readdirSync(mediaPath, { recursive: true }) as string[]).filter(
+      (file) => typeof file === "string" && isJsonMetadataFile(file),
+    );
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `[MediaWatcher] Recursive scan failed for ${mediaPath} (${errorMsg}). Falling back to top-level JSON files.`,
+    );
+
+    return fs
+      .readdirSync(mediaPath)
+      .filter((file) => typeof file === "string" && isJsonMetadataFile(file));
+  }
+}
+
 async function performScan(scanId: number, mediaPath: string): Promise<void> {
   const errors: Array<{ file: string; error: string }> = [];
   let processedCount = 0;
   let skippedCount = 0;
 
-  const jsonFiles = fs
-    .readdirSync(mediaPath, { recursive: true })
-    .filter(
-      (file) =>
-        typeof file === "string" &&
-        file.toLowerCase().endsWith(WATCHER_EXTENSION),
-    ) as string[];
+  const jsonFiles = collectJsonMetadataFiles(mediaPath);
 
   mediaWatcherRepo.updateScanRecord(scanId, {
     totalFiles: jsonFiles.length,

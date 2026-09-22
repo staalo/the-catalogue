@@ -1,5 +1,4 @@
 import { getMovieById } from "../../infra/db/repositories/localMovieRepository.js";
-import { getMediaPaths } from "../../infra/db/repositories/localMediaRepository.js";
 import {
   listMoviePlaybackProgress,
   upsertMoviePlaybackProgress,
@@ -10,6 +9,7 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "../../shared/errors/AppError.js";
+import { getMediaPaths } from "../media-paths/mediaPathService.js";
 import { isPathUnderDirectory } from "../stream/streamPathHelpers.js";
 
 export interface MoviePlaybackProgressResult {
@@ -18,9 +18,8 @@ export interface MoviePlaybackProgressResult {
 
 export function getMoviePlaybackProgress(
   userId: string,
-  userName: string,
 ): MoviePlaybackProgressResult {
-  const moviesPath = getMediaPaths(userName)?.moviesPath;
+  const moviesPath = getMediaPaths().moviesPath;
   return {
     items: moviesPath
       ? listMoviePlaybackProgress(userId, moviesPath)
@@ -30,7 +29,6 @@ export function getMoviePlaybackProgress(
 
 export async function saveMoviePlaybackProgress(
   userId: string,
-  userName: string,
   movieId: number,
   progress: number,
 ): Promise<MoviePlaybackProgress> {
@@ -47,7 +45,7 @@ export async function saveMoviePlaybackProgress(
     throw new NotFoundError("Movie not found.");
   }
 
-  const moviesPath = getMediaPaths(userName)?.moviesPath;
+  const moviesPath = getMediaPaths().moviesPath;
   if (!moviesPath || !isPathUnderDirectory(movie.url, moviesPath)) {
     throw new ForbiddenError("Movie is outside the configured library.");
   }

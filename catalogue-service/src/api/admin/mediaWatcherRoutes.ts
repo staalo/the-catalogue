@@ -19,7 +19,7 @@ export async function registerMediaWatcherRoutes(
 ): Promise<void> {
   /**
    * POST /api/admin/media/scan-movies
-   * Trigger a scan of the user's movies directory.
+   * Trigger a scan of the shared movies directory.
    * Returns scan ID and initial status.
    */
   app.post<{
@@ -66,7 +66,7 @@ export async function registerMediaWatcherRoutes(
 
   /**
    * POST /api/admin/media/scan-tv
-   * Trigger a scan of the user's TV shows directory.
+   * Trigger a scan of the shared TV shows directory.
    * Returns scan ID and initial status.
    */
   app.post<{
