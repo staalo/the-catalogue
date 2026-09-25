@@ -1,10 +1,8 @@
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import PlayArrow from '@mui/icons-material/PlayArrow';
-import VolumeUp from '@mui/icons-material/VolumeUp';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type { Media, MediaType } from '@/types';
@@ -103,18 +101,6 @@ export function Hero({ featured, tab, onPlay, onMoreInfo }: HeroProps) {
           </Stack>
         ) : null}
       </Box>
-      <IconButton
-        sx={{
-          position: 'absolute',
-          right: { xs: 2, md: 8 },
-          bottom: 75,
-          color: 'white',
-          background: 'rgba(0,0,0,.35)',
-        }}
-        aria-label="volume"
-      >
-        <VolumeUp />
-      </IconButton>
     </Box>
   );
 }

@@ -1,7 +1,46 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { browseMovies, searchMovies } from '@/api/catalogue';
 import { useWatchProgressStore } from '@/stores/useWatchProgressStore';
 import type { Media, MediaType } from '@/types';
+
+const FEATURED_ROTATION_MS = 2 * 60 * 1000;
+
+function pickDifferentIndex(length: number, current: number): number {
+  if (length <= 1) {
+    return 0;
+  }
+
+  let next = Math.floor(Math.random() * (length - 1));
+  if (next >= current) {
+    next += 1;
+  }
+
+  return next;
+}
+
+function useRotatingFeatured(items: Media[]): Media | null {
+  const listKey = items.map((item) => item.id).join('\0');
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    setIndex(0);
+  }, [listKey]);
+
+  useEffect(() => {
+    if (items.length < 2) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setIndex((current) => pickDifferentIndex(items.length, current));
+    }, FEATURED_ROTATION_MS);
+
+    return () => window.clearInterval(timer);
+  }, [listKey, items.length]);
+
+  return items[index] ?? items[0] ?? null;
+}
 
 function withLocalProgress(
   items: Media[],
@@ -35,6 +74,15 @@ export function useCatalogue(
     enabled: canFetchMovies && isSearching,
   });
 
+  const data =
+    type === 'tv'
+      ? []
+      : withLocalProgress(
+          isSearching ? (searchQuery.data ?? []) : (browseQuery.data ?? []),
+          progressById,
+        );
+  const featured = useRotatingFeatured(data);
+
   if (type === 'tv') {
     return {
       data: [],
@@ -44,15 +92,6 @@ export function useCatalogue(
       error: null,
     };
   }
-
-  const data = withLocalProgress(
-    isSearching ? (searchQuery.data ?? []) : (browseQuery.data ?? []),
-    progressById,
-  );
-  const featuredSource = browseQuery.data?.[0] ?? data[0] ?? null;
-  const featured = featuredSource
-    ? (withLocalProgress([featuredSource], progressById)[0] ?? null)
-    : null;
 
   return {
     data,

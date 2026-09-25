@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import ChevronRight from '@mui/icons-material/ChevronRight';
 import Box from '@mui/material/Box';
@@ -16,6 +16,31 @@ type RailProps = {
 
 export function Rail({ title, items, onOpen }: RailProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useEffect(() => {
+    const node = scrollerRef.current;
+    if (!node) {
+      return;
+    }
+
+    const update = () => {
+      const maxScroll = node.scrollWidth - node.clientWidth;
+      setCanScrollLeft(node.scrollLeft > 1);
+      setCanScrollRight(maxScroll - node.scrollLeft > 1);
+    };
+
+    update();
+    node.addEventListener('scroll', update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+
+    return () => {
+      node.removeEventListener('scroll', update);
+      observer.disconnect();
+    };
+  }, [items]);
 
   if (items.length === 0) {
     return null;
@@ -45,10 +70,20 @@ export function Rail({ title, items, onOpen }: RailProps) {
           {title}
         </Typography>
         <Stack direction="row" spacing={0.5}>
-          <IconButton size="small" aria-label="scroll left" onClick={() => scroll(-1)}>
+          <IconButton
+            size="small"
+            aria-label="scroll left"
+            disabled={!canScrollLeft}
+            onClick={() => scroll(-1)}
+          >
             <ChevronLeft />
           </IconButton>
-          <IconButton size="small" aria-label="scroll right" onClick={() => scroll(1)}>
+          <IconButton
+            size="small"
+            aria-label="scroll right"
+            disabled={!canScrollRight}
+            onClick={() => scroll(1)}
+          >
             <ChevronRight />
           </IconButton>
         </Stack>

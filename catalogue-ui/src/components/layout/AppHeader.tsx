@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import Clear from '@mui/icons-material/Clear';
 import Login from '@mui/icons-material/Login';
 import Logout from '@mui/icons-material/Logout';
 import Search from '@mui/icons-material/Search';
@@ -8,6 +10,7 @@ import InputBase from '@mui/material/InputBase';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { useDebounceCallback } from 'usehooks-ts';
 
 type AppHeaderProps = {
   search: string;
@@ -28,7 +31,20 @@ export function AppHeader({
   onLogout,
   onProfile,
 }: AppHeaderProps) {
+  const [draft, setDraft] = useState(search);
+  const publishSearch = useDebounceCallback(onSearchChange, 300);
   const initial = email?.trim().charAt(0).toUpperCase() || 'A';
+
+  const handleSearchChange = (value: string) => {
+    setDraft(value);
+    publishSearch(value);
+  };
+
+  const clearSearch = () => {
+    publishSearch.cancel();
+    setDraft('');
+    onSearchChange('');
+  };
   const avatar = (
     <Avatar sx={{ width: 31, height: 31, bgcolor: 'primary.main', fontSize: 13 }}>
       {initial}
@@ -84,11 +100,22 @@ export function AppHeader({
       >
         <Search sx={{ fontSize: 20, color: 'text.secondary' }} />
         <InputBase
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
+          value={draft}
+          onChange={(event) => handleSearchChange(event.target.value)}
           placeholder="Search your library"
           sx={{ ml: 1, color: 'white', fontSize: 13, flex: 1 }}
         />
+        {draft ? (
+          <IconButton
+            size="small"
+            aria-label="clear search"
+            onClick={clearSearch}
+            onMouseDown={(event) => event.preventDefault()}
+            sx={{ p: 0.25, color: 'text.secondary' }}
+          >
+            <Clear sx={{ fontSize: 18 }} />
+          </IconButton>
+        ) : null}
       </Paper>
       {authenticated ? (
         <IconButton
