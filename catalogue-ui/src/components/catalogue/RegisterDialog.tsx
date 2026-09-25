@@ -6,19 +6,17 @@ import {
 } from 'react-hook-form';
 import Close from '@mui/icons-material/Close';
 import PersonAdd from '@mui/icons-material/PersonAdd';
-import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
-import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import IconButton from '@mui/material/IconButton';
-import InputAdornment from '@mui/material/InputAdornment';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { PasswordField } from '@/components/catalogue/PasswordField';
 import { useRegister } from '@/hooks/useAuth';
 
 type RegisterDialogProps = {
@@ -89,21 +87,15 @@ function RegisterPasswordField({
   field: ControllerRenderProps<RegisterFormValues, 'password'>;
 }) {
   const [focused, setFocused] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const passwordIssue = getPasswordIssue(field.value);
   const hasText = field.value.length > 0;
   const isValid = !passwordIssue;
   const showError = !isValid && (focused || hasText);
-  const { ref, ...inputField } = field;
 
   return (
-    <TextField
-      {...inputField}
-      label="Password"
-      type={showPassword ? 'text' : 'password'}
+    <PasswordField
+      field={field}
       autoComplete="new-password"
-      required
-      fullWidth
       error={showError}
       helperText={hasText && passwordIssue ? passwordIssue : PASSWORD_HINT}
       onFocus={() => setFocused(true)}
@@ -112,28 +104,6 @@ function RegisterPasswordField({
         setFocused(false);
       }}
       sx={focused && isValid ? passwordSuccessSx : undefined}
-      slotProps={{
-        input: {
-          ref,
-          endAdornment: (
-            <InputAdornment position="end">
-              <IconButton
-                type="button"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                onClick={() => setShowPassword((visible) => !visible)}
-                onMouseDown={(event) => event.preventDefault()}
-                edge="end"
-              >
-                {showPassword ? (
-                  <VisibilityOffOutlined />
-                ) : (
-                  <VisibilityOutlined />
-                )}
-              </IconButton>
-            </InputAdornment>
-          ),
-        },
-      }}
     />
   );
 }

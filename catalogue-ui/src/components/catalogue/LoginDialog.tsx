@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import Close from '@mui/icons-material/Close';
 import Login from '@mui/icons-material/Login';
-import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined';
-import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -12,11 +10,11 @@ import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
-import InputAdornment from '@mui/material/InputAdornment';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { PasswordField } from '@/components/catalogue/PasswordField';
 import { useLogin } from '@/hooks/useAuth';
 
 type LoginDialogProps = {
@@ -40,7 +38,6 @@ const defaultValues: LoginFormValues = {
 export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
   const login = useLogin();
   const { reset: resetMutation } = login;
-  const [showPassword, setShowPassword] = useState(false);
   const { control, handleSubmit, reset } = useForm<LoginFormValues>({
     defaultValues,
   });
@@ -49,7 +46,6 @@ export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
     if (!open) {
       reset(defaultValues);
       resetMutation();
-      setShowPassword(false);
     }
   }, [open, reset, resetMutation]);
 
@@ -133,47 +129,14 @@ export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
             name="password"
             control={control}
             rules={{ required: 'Password is required' }}
-            render={({ field, fieldState }) => {
-              const { ref, ...inputField } = field;
-              return (
-                <TextField
-                  {...inputField}
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  fullWidth
-                  error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message}
-                  slotProps={{
-                    input: {
-                      ref,
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton
-                            type="button"
-                            aria-label={
-                              showPassword ? 'Hide password' : 'Show password'
-                            }
-                            onClick={() =>
-                              setShowPassword((visible) => !visible)
-                            }
-                            onMouseDown={(event) => event.preventDefault()}
-                            edge="end"
-                          >
-                            {showPassword ? (
-                              <VisibilityOffOutlined />
-                            ) : (
-                              <VisibilityOutlined />
-                            )}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                />
-              );
-            }}
+            render={({ field, fieldState }) => (
+              <PasswordField
+                field={field}
+                autoComplete="current-password"
+                error={Boolean(fieldState.error)}
+                helperText={fieldState.error?.message}
+              />
+            )}
           />
           <Controller
             name="rememberMe"

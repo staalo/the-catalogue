@@ -1,3 +1,5 @@
+import { queryClient } from '@/lib/queryClient';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 export class ApiError extends Error {
@@ -41,6 +43,10 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      queryClient.setQueryData(['auth', 'me'], null);
+    }
+
     throw new ApiError(response.status, await parseError(response));
   }
 

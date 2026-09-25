@@ -52,12 +52,14 @@ export function ProfileDialog({
             </IconButton>
           </Stack>
           <TextField
+            disabled
             label="Email"
             value={email}
             fullWidth
             slotProps={{ input: { readOnly: true } }}
           />
           <TextField
+            disabled
             label="Username"
             value={userName}
             fullWidth
