@@ -64,7 +64,7 @@ export function Rail({ title, items, onOpen }: RailProps) {
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        sx={{ mb: 2 }}
+        sx={{ mb: 2, pl: 1.5 }}
       >
         <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: '-.02em' }}>
           {title}
@@ -94,7 +94,9 @@ export function Rail({ title, items, onOpen }: RailProps) {
           display: 'flex',
           gap: { xs: 1.5, md: 2.25 },
           overflowX: 'auto',
-          pb: 1,
+          pt: 1.5,
+          pl: 1.5,
+          pb: 1.5,
           '&::-webkit-scrollbar': { display: 'none' },
         }}
       >

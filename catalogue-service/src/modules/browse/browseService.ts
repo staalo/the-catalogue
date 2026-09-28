@@ -43,3 +43,11 @@ export async function browseMovies(page: number): Promise<BrowseResult> {
 
   return { page, results, totalPages, totalResults: totalCount };
 }
+
+/**
+ * TV series are not catalogued yet. The response matches movie browse so the
+ * client can show the library total as soon as series are returned.
+ */
+export async function browseTv(page: number): Promise<BrowseResult> {
+  return { page, results: [], totalPages: 0, totalResults: 0 };
+}

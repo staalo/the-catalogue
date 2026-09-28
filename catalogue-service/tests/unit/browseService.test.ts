@@ -123,4 +123,16 @@ describe("browseService", () => {
     );
     expect(result.results[0]?.cast[0]?.name).toBe("Actor One");
   });
+
+  it("returns an empty total for tv series until they are catalogued", async () => {
+    const { browseTv } = await import("../../src/modules/browse/browseService.js");
+    const result = await browseTv(3);
+
+    expect(result).toEqual({
+      page: 3,
+      results: [],
+      totalPages: 0,
+      totalResults: 0,
+    });
+  });
 });

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../modules/auth/middleware.js";
-import { browseMovies } from "../../modules/browse/browseService.js";
+import { browseMovies, browseTv } from "../../modules/browse/browseService.js";
 
 interface BrowseQuery {
   page?: number;
@@ -25,6 +25,15 @@ export async function browseRoutes(app: FastifyInstance): Promise<void> {
       }
 
       return reply.send(result);
+    },
+  );
+
+  app.get<{ Querystring: BrowseQuery }>(
+    "/api/browse/browsetv",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const page = Math.max(1, Number(request.query.page) || 1);
+      return reply.send(await browseTv(page));
     },
   );
 }

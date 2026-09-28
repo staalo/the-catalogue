@@ -22,6 +22,24 @@ import { usePlaybackProgress } from '@/hooks/usePlaybackProgress';
 import { waitForPlaybackProgressUpdates } from '@/api/playback';
 import type { Extra, Media, MediaType, PlayerTarget } from '@/types';
 
+const MOVIE_GENRE_RAILS = [
+  'Action',
+  'Adventure',
+  'Crime',
+  'Drama',
+  'Fantasy',
+  'Horror',
+  'Science Fiction',
+  'Thriller',
+] as const;
+
+function moviesInGenre(items: Media[], genre: string): Media[] {
+  const target = genre.toLowerCase();
+  return items.filter((item) =>
+    item.genres.some((entry) => entry.name.toLowerCase() === target),
+  );
+}
+
 export function HomePage() {
   const [tab, setTab] = useState<MediaType>('movie');
   const [selected, setSelected] = useState<Media | null>(null);
@@ -41,7 +59,7 @@ export function HomePage() {
     setSelected(null);
   }, [user?.userName]);
 
-  const { data, featured, isLoading, isError, error } = useCatalogue(
+  const { data, totalResults, featured, isLoading, isError, error } = useCatalogue(
     tab,
     search,
     user?.userName,
@@ -51,6 +69,17 @@ export function HomePage() {
   const continueWatching = useMemo(
     () => data.filter((item) => item.progress && item.progress < 95),
     [data],
+  );
+
+  const genreRails = useMemo(
+    () =>
+      tab === 'movie'
+        ? MOVIE_GENRE_RAILS.map((genre) => ({
+            genre,
+            items: moviesInGenre(data, genre),
+          })).filter((rail) => rail.items.length > 0)
+        : [],
+    [data, tab],
   );
 
   const playMedia = (item: Media) => {
@@ -144,11 +173,23 @@ export function HomePage() {
               onOpen={setSelected}
             />
             <Rail
-              title={tab === 'movie' ? 'All movies' : 'All series'}
+              title={
+                tab === 'movie'
+                  ? `All movies (${totalResults})`
+                  : `All series (${totalResults})`
+              }
               items={data}
               onOpen={setSelected}
             />
-            {tab === 'tv' ? (
+            {genreRails.map((rail) => (
+              <Rail
+                key={rail.genre}
+                title={`${rail.genre} (${rail.items.length})`}
+                items={rail.items}
+                onOpen={setSelected}
+              />
+            ))}
+            {tab === 'tv' && data.length === 0 ? (
               <Typography color="text.secondary">
                 TV series are not available from the catalogue service yet.
               </Typography>
