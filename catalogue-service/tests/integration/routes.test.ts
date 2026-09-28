@@ -18,6 +18,12 @@ vi.mock("../../src/modules/auth/authService.js", () => ({
 
 vi.mock("../../src/modules/browse/browseService.js", () => ({
   browseMovies: browseMoviesMock,
+  browseTv: vi.fn(async (page: number) => ({
+    page,
+    results: [],
+    totalPages: 0,
+    totalResults: 0,
+  })),
 }));
 
 vi.mock("../../src/modules/playback/playbackProgressService.js", () => ({

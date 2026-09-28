@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { browseMovies, searchMovies } from '@/api/catalogue';
+import { browseMovies, browseTv, searchMovies } from '@/api/catalogue';
 import { useWatchProgressStore } from '@/stores/useWatchProgressStore';
 import type { Media, MediaType } from '@/types';
 
@@ -59,13 +59,14 @@ export function useCatalogue(
 ) {
   const trimmedSearch = search.trim();
   const isSearching = trimmedSearch.length > 0;
-  const canFetchMovies = Boolean(userName) && type === 'movie';
+  const canFetch = Boolean(userName);
+  const canFetchMovies = canFetch && type === 'movie';
   const progressById = useWatchProgressStore((state) => state.progressById);
 
   const browseQuery = useQuery({
     queryKey: ['catalogue', 'browse', userName, type],
-    queryFn: () => browseMovies(),
-    enabled: canFetchMovies,
+    queryFn: () => (type === 'tv' ? browseTv() : browseMovies()),
+    enabled: canFetch,
   });
 
   const searchQuery = useQuery({
@@ -74,27 +75,26 @@ export function useCatalogue(
     enabled: canFetchMovies && isSearching,
   });
 
-  const data =
-    type === 'tv'
-      ? []
-      : withLocalProgress(
-          isSearching ? (searchQuery.data ?? []) : (browseQuery.data ?? []),
-          progressById,
-        );
-  const featured = useRotatingFeatured(data);
+  const catalogue =
+    type === 'tv' || !isSearching ? browseQuery.data : searchQuery.data;
+  const data = withLocalProgress(catalogue?.items ?? [], progressById);
+  const featured = useRotatingFeatured(type === 'tv' ? [] : data);
+  const totalResults = catalogue?.totalResults ?? 0;
 
   if (type === 'tv') {
     return {
-      data: [],
+      data,
+      totalResults,
       featured: null,
-      isLoading: false,
-      isError: false,
-      error: null,
+      isLoading: browseQuery.isLoading,
+      isError: browseQuery.isError,
+      error: browseQuery.error,
     };
   }
 
   return {
     data,
+    totalResults,
     featured,
     isLoading: isSearching ? searchQuery.isLoading : browseQuery.isLoading,
     isError: isSearching ? searchQuery.isError : browseQuery.isError,
