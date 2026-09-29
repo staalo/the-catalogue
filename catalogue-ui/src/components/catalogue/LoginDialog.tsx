@@ -24,13 +24,13 @@ type LoginDialogProps = {
 };
 
 type LoginFormValues = {
-  email: string;
+  identifier: string;
   password: string;
   rememberMe: boolean;
 };
 
 const defaultValues: LoginFormValues = {
-  email: '',
+  identifier: '',
   password: '',
   rememberMe: false,
 };
@@ -56,7 +56,7 @@ export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
   const onSubmit = handleSubmit(async (values) => {
     try {
       await login.mutateAsync({
-        email: values.email.trim(),
+        email: values.identifier.trim(),
         password: values.password,
         rememberMe: values.rememberMe,
       });
@@ -78,7 +78,7 @@ export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
     >
       <DialogContent>
         <Stack spacing={2.5} component="form" onSubmit={onSubmit} noValidate>
-          <Stack direction="row" justifyContent="space-between">
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
             <Box>
               <Typography variant="h5" fontWeight={700}>
                 Welcome back
@@ -99,23 +99,19 @@ export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
             </Alert>
           ) : null}
           <Controller
-            name="email"
+            name="identifier"
             control={control}
             rules={{
-              required: 'Email is required',
-              pattern: {
-                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                message: 'Enter a valid email',
-              },
+              validate: (value) =>
+                value.trim().length > 0 || 'Email or username is required',
             }}
             render={({ field, fieldState }) => {
               const { ref, ...inputField } = field;
               return (
                 <TextField
                   {...inputField}
-                  label="Email"
-                  type="email"
-                  autoComplete="email"
+                  label="Email or username"
+                  autoComplete="username"
                   required
                   fullWidth
                   error={Boolean(fieldState.error)}

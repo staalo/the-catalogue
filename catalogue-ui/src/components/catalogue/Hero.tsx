@@ -10,11 +10,12 @@ import type { Media, MediaType } from '@/types';
 type HeroProps = {
   featured: Media | null;
   tab: MediaType;
+  signedOut: boolean;
   onPlay: (item: Media) => void;
   onMoreInfo: (item: Media) => void;
 };
 
-export function Hero({ featured, tab, onPlay, onMoreInfo }: HeroProps) {
+export function Hero({ featured, tab, signedOut, onPlay, onMoreInfo }: HeroProps) {
   const backgroundImage = featured
     ? `linear-gradient(90deg, #090a0c 0%, rgba(9,10,12,.82) 30%, rgba(9,10,12,.2) 70%), linear-gradient(0deg, #090a0c 0%, transparent 45%), url(${featured.backdrop || featured.image})`
     : 'linear-gradient(180deg, #090a0c, #12141a)';
@@ -73,7 +74,9 @@ export function Hero({ featured, tab, onPlay, onMoreInfo }: HeroProps) {
           sx={{ fontSize: 14, lineHeight: 1.6, maxWidth: 490, mb: 3 }}
         >
           {featured?.description ||
-            'Sign in to browse and watch your personal movie library.'}
+            (signedOut
+              ? 'Sign in to browse and watch your personal movie library.'
+              : '')}
         </Typography>
         {featured ? (
           <Stack direction="row" spacing={1.5}>

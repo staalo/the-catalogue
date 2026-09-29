@@ -49,10 +49,13 @@ export function HomePage() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  const { data: user } = useCurrentUser();
+  const { data: user, displayUser, authPending } = useCurrentUser();
+  const shownUser = displayUser ?? user ?? undefined;
   const playbackProgress = usePlaybackProgress(user?.userName);
   const logout = useLogout();
-  const authenticated = Boolean(user?.email);
+  const authenticated = Boolean(shownUser?.email || shownUser?.userName);
+  const sessionKnown = Boolean(user?.email || user?.userName);
+  const signedOut = !authPending && !authenticated;
 
   useEffect(() => {
     setPlayer(null);
@@ -111,7 +114,9 @@ export function HomePage() {
         search={search}
         onSearchChange={setSearch}
         authenticated={authenticated}
-        email={user?.email}
+        authPending={authPending}
+        email={shownUser?.email}
+        userName={shownUser?.userName}
         onLogin={() => setLoginOpen(true)}
         onLogout={() => {
           const playbackUser = user?.userName;
@@ -126,8 +131,9 @@ export function HomePage() {
         onProfile={() => setProfileOpen(true)}
       />
       <Hero
-        featured={authenticated && !catalogueLoading ? featured : null}
+        featured={sessionKnown && !catalogueLoading ? featured : null}
         tab={tab}
+        signedOut={signedOut}
         onPlay={playMedia}
         onMoreInfo={setSelected}
       />
@@ -153,19 +159,19 @@ export function HomePage() {
           <Tab value="movie" label="Movies" />
           <Tab value="tv" label="TV series" />
         </Tabs>
-        {!authenticated ? <SignInPrompt onLogin={() => setLoginOpen(true)} /> : null}
-        {authenticated && catalogueLoading ? <LinearProgress /> : null}
-        {authenticated && isError ? (
+        {signedOut ? <SignInPrompt onLogin={() => setLoginOpen(true)} /> : null}
+        {sessionKnown && catalogueLoading ? <LinearProgress /> : null}
+        {sessionKnown && isError ? (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error instanceof Error ? error.message : 'Unable to load the catalogue'}
           </Alert>
         ) : null}
-        {authenticated && playbackProgress.isError ? (
+        {sessionKnown && playbackProgress.isError ? (
           <Alert severity="warning" sx={{ mb: 3 }}>
             Playback progress could not be synchronized.
           </Alert>
         ) : null}
-        {authenticated && !catalogueLoading ? (
+        {sessionKnown && !catalogueLoading ? (
           <>
             <Rail
               title="Continue watching"
@@ -220,8 +226,8 @@ export function HomePage() {
       />
       <ProfileDialog
         open={profileOpen}
-        email={user?.email ?? ''}
-        userName={user?.userName ?? ''}
+        email={shownUser?.email ?? ''}
+        userName={shownUser?.userName ?? ''}
         onClose={() => setProfileOpen(false)}
       />
       <MediaDetailsDialog
