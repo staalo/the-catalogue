@@ -157,7 +157,7 @@ export function RegisterDialog({ open, onClose, onLogin }: RegisterDialogProps) 
     >
       <DialogContent>
         <Stack spacing={2.5} component="form" onSubmit={onSubmit} noValidate>
-          <Stack direction="row" justifyContent="space-between">
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
             <Box>
               <Typography variant="h5" fontWeight={700}>
                 Create an account

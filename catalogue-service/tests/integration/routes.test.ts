@@ -148,6 +148,7 @@ describe("route behavior", () => {
 
     expect(loginRes.statusCode).toBe(200);
     expect(loginRes.json()).toEqual({ email: "user@example.com" });
+    expect(loginUserMock).toHaveBeenCalledWith("user@example.com", "secret");
 
     const cookie = getCookie(
       loginRes as unknown as { headers: Record<string, unknown> },
@@ -173,6 +174,46 @@ describe("route behavior", () => {
 
     expect(pingAuthRes.statusCode).toBe(200);
     expect(pingAuthRes.json()).toEqual({ email: "user@example.com" });
+
+    await app.close();
+  });
+
+  it("logs in with a user name instead of an email", async () => {
+    const app = await createApp();
+
+    loginUserMock.mockResolvedValueOnce({
+      id: "u-100",
+      email: "user@example.com",
+      userName: "user1",
+    });
+
+    const loginRes = await app.inject({
+      method: "POST",
+      url: "/userlogin",
+      payload: { userName: "user1", password: "secret" },
+    });
+
+    expect(loginRes.statusCode).toBe(200);
+    expect(loginRes.json()).toEqual({ email: "user@example.com" });
+    expect(loginUserMock).toHaveBeenCalledWith("user1", "secret");
+
+    await app.close();
+  });
+
+  it("rejects login when neither email nor user name is provided", async () => {
+    const app = await createApp();
+
+    const loginRes = await app.inject({
+      method: "POST",
+      url: "/userlogin",
+      payload: { password: "secret" },
+    });
+
+    expect(loginRes.statusCode).toBe(400);
+    expect(loginRes.json()).toEqual({
+      error: "email or user name and password are required",
+    });
+    expect(loginUserMock).not.toHaveBeenCalled();
 
     await app.close();
   });

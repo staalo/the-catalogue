@@ -38,7 +38,7 @@ export function ProfileDialog({
     >
       <DialogContent>
         <Stack spacing={2.5}>
-          <Stack direction="row" justifyContent="space-between">
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
             <Box>
               <Typography variant="h5" fontWeight={700}>
                 Your profile

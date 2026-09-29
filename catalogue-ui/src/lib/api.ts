@@ -44,7 +44,10 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
 
   if (!response.ok) {
     if (response.status === 401) {
-      queryClient.setQueryData(['auth', 'me'], null);
+      const session = queryClient.getQueryState(['auth', 'me']);
+      if (session?.fetchStatus !== 'fetching') {
+        queryClient.setQueryData(['auth', 'me'], null);
+      }
     }
 
     throw new ApiError(response.status, await parseError(response));

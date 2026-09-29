@@ -4,6 +4,7 @@ import {
   findUserByEmail,
   findUserByEmailOrUserName,
   findUserById,
+  findUserByUserName,
   isUniqueConstraintError,
 } from "../../infra/db/repositories/userRepository.js";
 import {
@@ -29,14 +30,16 @@ export interface RegisterUserInput {
 
 /**
  * Validate credentials and return the authenticated user.
- * Mirrors .NET: FindByEmailAsync + PasswordSignInAsync.
+ * The identifier may be an email or a user name. An email match is preferred
+ * when the same value could refer to two different accounts.
  * Throws UnauthorizedError on any failure — intentionally no detail leak.
  */
 export async function loginUser(
-  email: string,
+  identifier: string,
   password: string,
 ): Promise<AuthUser> {
-  const user = findUserByEmail(email);
+  const login = identifier.trim();
+  const user = findUserByEmail(login) ?? findUserByUserName(login);
 
   if (!user || !user.passwordHash) {
     // Constant-time dummy comparison to prevent timing-based user enumeration
@@ -52,7 +55,7 @@ export async function loginUser(
     throw new UnauthorizedError();
   }
 
-  return { id: user.id, email: user.email ?? email, userName: user.userName };
+  return { id: user.id, email: user.email ?? login, userName: user.userName };
 }
 
 /**

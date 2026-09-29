@@ -16,7 +16,9 @@ type AppHeaderProps = {
   search: string;
   onSearchChange: (value: string) => void;
   authenticated: boolean;
+  authPending: boolean;
   email?: string;
+  userName?: string;
   onLogin: () => void;
   onLogout: () => void;
   onProfile: () => void;
@@ -26,14 +28,16 @@ export function AppHeader({
   search,
   onSearchChange,
   authenticated,
+  authPending,
   email,
+  userName,
   onLogin,
   onLogout,
   onProfile,
 }: AppHeaderProps) {
   const [draft, setDraft] = useState(search);
   const publishSearch = useDebounceCallback(onSearchChange, 300);
-  const initial = email?.trim().charAt(0).toUpperCase() || 'A';
+  const initial = (email || userName)?.trim().charAt(0).toUpperCase() || 'A';
 
   const handleSearchChange = (value: string) => {
     setDraft(value);
@@ -117,7 +121,9 @@ export function AppHeader({
           </IconButton>
         ) : null}
       </Paper>
-      {authenticated ? (
+      {authPending ? (
+        <Box aria-hidden sx={{ width: 31, height: 31, flexShrink: 0 }} />
+      ) : authenticated ? (
         <IconButton
           color="inherit"
           size="small"
@@ -130,14 +136,18 @@ export function AppHeader({
       ) : (
         avatar
       )}
-      <IconButton
-        color="inherit"
-        size="small"
-        onClick={authenticated ? onLogout : onLogin}
-        aria-label={authenticated ? 'log out' : 'log in'}
-      >
-        {authenticated ? <Logout fontSize="small" /> : <Login fontSize="small" />}
-      </IconButton>
+      {authPending ? (
+        <Box aria-hidden sx={{ width: 30, height: 30, flexShrink: 0 }} />
+      ) : (
+        <IconButton
+          color="inherit"
+          size="small"
+          onClick={authenticated ? onLogout : onLogin}
+          aria-label={authenticated ? 'log out' : 'log in'}
+        >
+          {authenticated ? <Logout fontSize="small" /> : <Login fontSize="small" />}
+        </IconButton>
+      )}
     </Box>
   );
 }

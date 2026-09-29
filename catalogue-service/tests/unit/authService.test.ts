@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const compareMock = vi.fn();
 const findUserByEmailMock = vi.fn();
+const findUserByUserNameMock = vi.fn();
 const findUserByIdMock = vi.fn();
 const findUserByEmailOrUserNameMock = vi.fn();
 const createUserMock = vi.fn();
@@ -14,6 +15,7 @@ vi.mock("bcrypt", () => ({
 
 vi.mock("../../src/infra/db/repositories/userRepository.js", () => ({
   findUserByEmail: findUserByEmailMock,
+  findUserByUserName: findUserByUserNameMock,
   findUserById: findUserByIdMock,
   findUserByEmailOrUserName: findUserByEmailOrUserNameMock,
   createUser: createUserMock,
@@ -31,8 +33,13 @@ vi.mock("../../src/infra/db/repositories/userRepository.js", () => ({
 }));
 
 describe("authService", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("throws UnauthorizedError and performs dummy compare when user is missing", async () => {
     findUserByEmailMock.mockReturnValueOnce(undefined);
+    findUserByUserNameMock.mockReturnValueOnce(undefined);
     compareMock.mockResolvedValueOnce(false);
 
     const { loginUser } = await import("../../src/modules/auth/authService.js");
@@ -75,6 +82,28 @@ describe("authService", () => {
       email: "bob@example.com",
       userName: "bob",
     });
+    expect(findUserByUserNameMock).not.toHaveBeenCalled();
+  });
+
+  it("authenticates with a user name when no email matches", async () => {
+    findUserByEmailMock.mockReturnValueOnce(undefined);
+    findUserByUserNameMock.mockReturnValueOnce({
+      id: "u-4",
+      userName: "alice",
+      email: "alice@example.com",
+      passwordHash: "$2b$12$realhashrealhashrealhashrealhashrealhashrealhash",
+    });
+    compareMock.mockResolvedValueOnce(true);
+
+    const { loginUser } = await import("../../src/modules/auth/authService.js");
+
+    await expect(loginUser("  alice  ", "ok")).resolves.toEqual({
+      id: "u-4",
+      email: "alice@example.com",
+      userName: "alice",
+    });
+    expect(findUserByEmailMock).toHaveBeenCalledWith("alice");
+    expect(findUserByUserNameMock).toHaveBeenCalledWith("alice");
   });
 
   it("resolves session to user summary and returns null for missing users", async () => {

@@ -107,6 +107,7 @@ export type CurrentUser = {
 };
 
 export type LoginRequest = {
+  /** Email or username. The service accepts either value in this field. */
   email: string;
   password: string;
   rememberMe?: boolean;

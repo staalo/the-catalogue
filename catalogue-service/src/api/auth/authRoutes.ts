@@ -9,7 +9,8 @@ import { requireAuth } from "../../modules/auth/middleware.js";
 import { AppError } from "../../shared/errors/AppError.js";
 
 interface LoginBody {
-  email: string;
+  email?: string;
+  userName?: string;
   password: string;
   rememberMe?: boolean;
 }
@@ -63,18 +64,21 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // POST /userlogin
-  // Body: { email, password, rememberMe? }
+  // Body: { email?, userName?, password, rememberMe? }
+  // Either email or userName identifies the account; a value in email may
+  // itself be a user name.
   app.post<{ Body: LoginBody }>("/userlogin", async (request, reply) => {
-    const { email, password, rememberMe } = request.body;
+    const { email, userName, password, rememberMe } = request.body ?? {};
+    const identifier = email?.trim() || userName?.trim();
 
-    if (!email || !password) {
+    if (!identifier || !password) {
       return reply
         .status(400)
-        .send({ error: "email and password are required" });
+        .send({ error: "email or user name and password are required" });
     }
 
     try {
-      const user = await loginUser(email, password);
+      const user = await loginUser(identifier, password);
       request.session.userId = user.id;
       request.session.email = user.email;
       request.session.userName = user.userName;
