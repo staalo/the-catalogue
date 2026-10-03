@@ -81,14 +81,6 @@ export function AppHeader({
           catalogue
         </Box>
       </Typography>
-      <Stack direction="row" spacing={3} sx={{ display: { xs: 'none', md: 'flex' } }}>
-        <Typography fontSize={14} fontWeight={700}>
-          Home
-        </Typography>
-        <Typography fontSize={14} color="text.secondary">
-          My List
-        </Typography>
-      </Stack>
       <Box sx={{ flex: 1 }} />
       <Paper
         component="label"
