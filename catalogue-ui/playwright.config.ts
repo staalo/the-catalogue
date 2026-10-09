@@ -8,6 +8,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
+  timeout: 60_000,
+  workers: 2,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL,
@@ -17,6 +19,10 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "firefox",
+      use: { ...devices["Desktop Firefox"] },
     },
   ],
   webServer: {

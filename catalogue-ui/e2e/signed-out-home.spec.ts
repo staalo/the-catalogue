@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 test("signed-out visitor can open and close the login dialog", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "domcontentloaded" });
 
   await expect(page.getByRole("heading", { name: "the catalogue" })).toBeVisible();
   await expect(
