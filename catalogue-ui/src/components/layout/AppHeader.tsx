@@ -8,7 +8,6 @@ import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import InputBase from '@mui/material/InputBase';
 import Paper from '@mui/material/Paper';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useDebounceCallback } from 'usehooks-ts';
 
@@ -81,14 +80,6 @@ export function AppHeader({
           catalogue
         </Box>
       </Typography>
-      <Stack direction="row" spacing={3} sx={{ display: { xs: 'none', md: 'flex' } }}>
-        <Typography fontSize={14} fontWeight={700}>
-          Home
-        </Typography>
-        <Typography fontSize={14} color="text.secondary">
-          My List
-        </Typography>
-      </Stack>
       <Box sx={{ flex: 1 }} />
       <Paper
         component="label"
