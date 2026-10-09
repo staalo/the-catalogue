@@ -42,6 +42,19 @@ function optionalText(value: string): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateEmail(value: string): true | string {
+  const email = value.trim();
+  if (!email) {
+    return 'Email is required';
+  }
+  if (!EMAIL_PATTERN.test(email)) {
+    return 'Enter a valid email';
+  }
+  return true;
+}
+
 const PASSWORD_HINT =
   'At least 6 characters, with uppercase, lowercase, a number, and a symbol.';
 
@@ -180,13 +193,7 @@ export function RegisterDialog({ open, onClose, onLogin }: RegisterDialogProps) 
           <Controller
             name="email"
             control={control}
-            rules={{
-              required: 'Email is required',
-              pattern: {
-                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                message: 'Enter a valid email',
-              },
-            }}
+            rules={{ validate: validateEmail }}
             render={({ field, fieldState }) => {
               const { ref, ...inputField } = field;
               return (
