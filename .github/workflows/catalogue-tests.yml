@@ -1,0 +1,60 @@
+name: Catalogue tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  service:
+    name: Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: catalogue-service
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: catalogue-service/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  ui:
+    name: UI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: catalogue-ui
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: catalogue-ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox
+
+      - name: Run component tests
+        run: npm run test:run
+
+      - name: Run end-to-end tests
+        run: npm run test:e2e
