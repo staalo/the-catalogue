@@ -9,22 +9,27 @@ import {
   wrongPassword,
 } from "./account";
 
-test("shows field errors for an empty sign-in and stays signed out", async ({
+test("keeps sign in disabled until the identifier and password are valid", async ({
   page,
   accountApi,
 }) => {
   await openLogin(page);
 
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Sign in" }).click();
+  const signIn = dialog.getByRole("button", { name: "Sign in" });
+  await expect(signIn).toBeDisabled();
 
-  await expect(dialog.getByText("Email or username is required")).toBeVisible();
-  await expect(dialog.getByText("Password is required")).toBeVisible();
+  await dialog.getByRole("textbox", { name: "Email or username" }).fill(account.email);
+  await expect(signIn).toBeDisabled();
+
+  await dialog.getByRole("textbox", { name: "Password" }).fill("secret");
+  await expect(signIn).toBeDisabled();
+
+  await dialog.getByRole("textbox", { name: "Password" }).fill(account.password);
+  await expect(signIn).toBeEnabled();
 
   await dialog.getByRole("textbox", { name: "Email or username" }).fill("   ");
-  await dialog.getByRole("button", { name: "Sign in" }).click();
-
-  await expect(dialog.getByText("Email or username is required")).toBeVisible();
+  await expect(signIn).toBeDisabled();
   await expect(dialog.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   expect(accountApi.loginRequests).toEqual([]);
 
@@ -40,9 +45,19 @@ test("shows a rejected sign-in and keeps the dialog open", async ({
   await submitLogin(page, account.email, wrongPassword);
 
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("alert")).toHaveText("Incorrect password");
+  const alert = dialog.getByRole("alert");
+  await expect(alert).toHaveText("Email/username or password was incorrect");
   await expect(dialog.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+
+  await dialog.getByRole("textbox", { name: "Email or username" }).click();
+  await expect(alert).toBeHidden();
+
+  await submitLogin(page, account.email, wrongPassword);
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await dialog.getByRole("textbox", { name: "Password" }).click();
+  await expect(dialog.getByRole("alert")).toBeHidden();
   expect(accountApi.loginRequests).toEqual([
+    { email: account.email, password: wrongPassword, rememberMe: false },
     { email: account.email, password: wrongPassword, rememberMe: false },
   ]);
 

@@ -16,6 +16,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { PasswordField } from '@/components/catalogue/PasswordField';
 import { useLogin } from '@/hooks/useAuth';
+import { getPasswordIssue, validatePassword } from '@/lib/password';
 
 type LoginDialogProps = {
   open: boolean;
@@ -35,12 +36,30 @@ const defaultValues: LoginFormValues = {
   rememberMe: false,
 };
 
+const invalidCredentialsMessage = 'Email/username or password was incorrect';
+
+function signInErrorMessage(error: unknown): string {
+  if (!(error instanceof Error) || !error.message) {
+    return 'Unable to sign in';
+  }
+
+  if (error.message === 'Unauthorized') {
+    return invalidCredentialsMessage;
+  }
+
+  return error.message;
+}
+
 export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
   const login = useLogin();
   const { reset: resetMutation } = login;
-  const { control, handleSubmit, reset } = useForm<LoginFormValues>({
+  const { control, handleSubmit, reset, watch } = useForm<LoginFormValues>({
     defaultValues,
   });
+  const identifier = watch('identifier');
+  const password = watch('password');
+  const canSignIn =
+    identifier.trim().length > 0 && getPasswordIssue(password) === undefined;
 
   useEffect(() => {
     if (!open) {
@@ -51,6 +70,12 @@ export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
 
   const handleClose = () => {
     onClose();
+  };
+
+  const clearSignInError = () => {
+    if (login.isError) {
+      resetMutation();
+    }
   };
 
   const onSubmit = handleSubmit(async (values) => {
@@ -72,7 +97,13 @@ export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
       onClose={handleClose}
       slotProps={{
         paper: {
-          sx: { background: '#181a1f', color: 'white', p: 1, maxWidth: 400 },
+          sx: {
+            background: '#181a1f',
+            color: 'white',
+            p: 1,
+            width: 345,
+            maxWidth: '100%',
+          },
         },
       }}
     >
@@ -93,9 +124,7 @@ export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
           </Stack>
           {login.isError ? (
             <Alert severity="error">
-              {login.error instanceof Error
-                ? login.error.message
-                : 'Unable to sign in'}
+              {signInErrorMessage(login.error)}
             </Alert>
           ) : null}
           <Controller
@@ -116,6 +145,8 @@ export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
                   fullWidth
                   error={Boolean(fieldState.error)}
                   helperText={fieldState.error?.message}
+                  onFocus={clearSignInError}
+                  onClick={clearSignInError}
                   slotProps={{ input: { ref } }}
                 />
               );
@@ -124,13 +155,15 @@ export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
           <Controller
             name="password"
             control={control}
-            rules={{ required: 'Password is required' }}
+            rules={{ validate: validatePassword }}
             render={({ field, fieldState }) => (
               <PasswordField
                 field={field}
                 autoComplete="current-password"
                 error={Boolean(fieldState.error)}
                 helperText={fieldState.error?.message}
+                onFocus={clearSignInError}
+                onClick={clearSignInError}
               />
             )}
           />
@@ -158,7 +191,7 @@ export function LoginDialog({ open, onClose, onRegister }: LoginDialogProps) {
             variant="contained"
             size="large"
             startIcon={<Login />}
-            disabled={login.isPending}
+            disabled={!canSignIn || login.isPending}
             sx={{ py: 1.3, fontWeight: 700 }}
           >
             {login.isPending ? 'Signing in…' : 'Sign in'}

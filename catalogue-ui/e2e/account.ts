@@ -3,11 +3,11 @@ import { expect, test as base, type Page, type Route } from "@playwright/test";
 export const account = {
   email: "ada@example.com",
   userName: "ada",
-  password: "secret",
+  password: "Secret1!",
 };
 
 const registeredPassword = "Abcd1!";
-const wrongPassword = "wrong-password";
+const wrongPassword = "Wrong1!";
 const takenEmail = "taken@example.com";
 
 type SessionUser = {
@@ -83,7 +83,7 @@ export async function installAccountApi(page: Page): Promise<AccountApi> {
     api.loginRequests.push(body);
 
     if (body.password === wrongPassword) {
-      return fulfill(route, 401, { error: "Incorrect password" });
+      return fulfill(route, 401, { error: "Unauthorized" });
     }
 
     session = { email: body.email, userName: account.userName };

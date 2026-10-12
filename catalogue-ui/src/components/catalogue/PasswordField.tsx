@@ -17,6 +17,7 @@ type PasswordFieldProps<
   sx?: TextFieldProps['sx'];
   onFocus?: TextFieldProps['onFocus'];
   onBlur?: TextFieldProps['onBlur'];
+  onClick?: TextFieldProps['onClick'];
 };
 
 export function PasswordField<
@@ -30,6 +31,7 @@ export function PasswordField<
   sx,
   onFocus,
   onBlur,
+  onClick,
 }: PasswordFieldProps<TFieldValues, TName>) {
   const [showPassword, setShowPassword] = useState(false);
   const { ref, ...inputField } = field;
@@ -45,6 +47,7 @@ export function PasswordField<
       error={error}
       helperText={helperText}
       onFocus={onFocus}
+      onClick={onClick}
       onBlur={onBlur ?? inputField.onBlur}
       sx={sx}
       slotProps={{

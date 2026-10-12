@@ -55,22 +55,34 @@ async function fillAccount(
   }
 }
 
-test("requires a valid email", async () => {
+test("keeps create account disabled until the email and password are valid", async () => {
   const screen = await render(<RegisterDialog open onClose={vi.fn()} onLogin={vi.fn()} />, {
     wrapper: Providers,
   });
 
-  await screen.getByRole("button", { name: "Create account" }).click();
-  await expect.element(screen.getByText("Email is required")).toBeVisible();
+  const createAccount = screen.getByRole("button", { name: "Create account" });
+  const email = screen.getByRole("textbox", { name: /^email/i });
+  await expect.element(createAccount).toBeDisabled();
 
-  await screen.getByRole("textbox", { name: /^email/i }).fill("   ");
-  await screen.getByRole("button", { name: "Create account" }).click();
-  await expect.element(screen.getByText("Email is required")).toBeVisible();
-
-  await screen.getByRole("textbox", { name: /^email/i }).fill("ada");
-  await screen.getByRole("button", { name: "Create account" }).click();
-
+  await email.fill("ada");
   await expect.element(screen.getByText("Enter a valid email")).toBeVisible();
+  await expect.element(createAccount).toBeDisabled();
+
+  await email.fill("");
+  await expect.element(screen.getByText("Email is required")).toBeVisible();
+  await expect.element(createAccount).toBeDisabled();
+
+  await email.fill("ada@example.com");
+  await expect.element(createAccount).toBeDisabled();
+
+  await screen.getByRole("textbox", { name: /password/i }).fill("Ab1!");
+  await expect.element(createAccount).toBeDisabled();
+
+  await screen.getByRole("textbox", { name: /password/i }).fill("Abcd1!");
+  await expect.element(createAccount).toBeEnabled();
+
+  await email.fill("");
+  await expect.element(createAccount).toBeDisabled();
   expect(register).not.toHaveBeenCalled();
 });
 
