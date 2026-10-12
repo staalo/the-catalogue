@@ -37,17 +37,19 @@ test("explains invalid registration details", async ({ page, accountApi }) => {
   const dialog = page.getByRole("dialog");
   const email = dialog.getByRole("textbox", { name: "Email" });
   const password = dialog.getByRole("textbox", { name: "Password" });
+  const createAccount = dialog.getByRole("button", { name: "Create account" });
 
-  await dialog.getByRole("button", { name: "Create account" }).click();
-  await expect(dialog.getByText("Email is required")).toBeVisible();
-
-  await email.fill("   ");
-  await dialog.getByRole("button", { name: "Create account" }).click();
-  await expect(dialog.getByText("Email is required")).toBeVisible();
+  await expect(createAccount).toBeDisabled();
 
   await email.fill("ada");
-  await dialog.getByRole("button", { name: "Create account" }).click();
   await expect(dialog.getByText("Enter a valid email")).toBeVisible();
+  await expect(createAccount).toBeDisabled();
+
+  await email.fill("");
+  await expect(dialog.getByText("Email is required")).toBeVisible();
+  await expect(createAccount).toBeDisabled();
+
+  await email.fill("ada");
 
   await expect(dialog.getByText(passwordHint)).toBeVisible();
   await password.fill("Ab1!");
@@ -63,6 +65,7 @@ test("explains invalid registration details", async ({ page, accountApi }) => {
   await password.fill(registeredPassword);
   await expect(dialog.getByText(passwordHint)).toBeVisible();
   await expect(dialog.getByText("Password must include an uppercase letter.")).toHaveCount(0);
+  await expect(createAccount).toBeDisabled();
 
   await expect(page.getByRole("heading", { name: "Create an account" })).toBeVisible();
   expect(accountApi.registerRequests).toEqual([]);

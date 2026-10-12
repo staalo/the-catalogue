@@ -18,6 +18,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { PasswordField } from '@/components/catalogue/PasswordField';
 import { useRegister } from '@/hooks/useAuth';
+import { getPasswordIssue, PASSWORD_HINT, validatePassword } from '@/lib/password';
 
 type RegisterDialogProps = {
   open: boolean;
@@ -53,35 +54,6 @@ function validateEmail(value: string): true | string {
     return 'Enter a valid email';
   }
   return true;
-}
-
-const PASSWORD_HINT =
-  'At least 6 characters, with uppercase, lowercase, a number, and a symbol.';
-
-function getPasswordIssue(value: string): string | undefined {
-  if (!value) {
-    return PASSWORD_HINT;
-  }
-  if (value.length < 6) {
-    return 'Password must be at least 6 characters.';
-  }
-  if (!/[^A-Za-z0-9]/.test(value)) {
-    return 'Password must include a symbol.';
-  }
-  if (!/\d/.test(value)) {
-    return 'Password must include a number.';
-  }
-  if (!/[a-z]/.test(value)) {
-    return 'Password must include a lowercase letter.';
-  }
-  if (!/[A-Z]/.test(value)) {
-    return 'Password must include an uppercase letter.';
-  }
-  return undefined;
-}
-
-function validatePassword(value: string): true | string {
-  return getPasswordIssue(value) ?? true;
 }
 
 const passwordSuccessSx = {
@@ -124,9 +96,14 @@ function RegisterPasswordField({
 export function RegisterDialog({ open, onClose, onLogin }: RegisterDialogProps) {
   const registerUser = useRegister();
   const { reset: resetMutation } = registerUser;
-  const { control, handleSubmit, reset } = useForm<RegisterFormValues>({
+  const { control, handleSubmit, reset, watch } = useForm<RegisterFormValues>({
     defaultValues,
+    mode: 'onChange',
   });
+  const email = watch('email');
+  const password = watch('password');
+  const canRegister =
+    validateEmail(email) === true && getPasswordIssue(password) === undefined;
 
   useEffect(() => {
     if (!open) {
@@ -240,7 +217,7 @@ export function RegisterDialog({ open, onClose, onLogin }: RegisterDialogProps) 
             variant="contained"
             size="large"
             startIcon={<PersonAdd />}
-            disabled={registerUser.isPending}
+            disabled={!canRegister || registerUser.isPending}
             sx={{ py: 1.3, fontWeight: 700 }}
           >
             {registerUser.isPending ? 'Creating account…' : 'Create account'}

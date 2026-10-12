@@ -13,6 +13,17 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  optimizeDeps: {
+    include: [
+      "@mui/material/CssBaseline",
+      "@mui/material/GlobalStyles",
+      "@mui/material/LinearProgress",
+      "@mui/material/Tab",
+      "@mui/material/Tabs",
+      "@tanstack/react-query-devtools",
+      "react-dom/client",
+    ],
+  },
   server: {
     proxy: {
       "/api": { target: catalogueService, changeOrigin: true },

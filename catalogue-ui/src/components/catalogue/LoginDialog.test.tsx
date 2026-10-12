@@ -43,20 +43,27 @@ beforeEach(() => {
   login.mockResolvedValue({ email: "ada@example.com" });
 });
 
-test("requires an identifier and a password", async () => {
+const validPassword = "Abcd1!";
+
+test("keeps sign in disabled until the identifier and password are valid", async () => {
   const screen = await render(<LoginDialog open onClose={vi.fn()} onRegister={vi.fn()} />, {
     wrapper: Providers,
   });
 
-  await screen.getByRole("button", { name: "Sign in" }).click();
+  const signIn = screen.getByRole("button", { name: "Sign in" });
+  await expect.element(signIn).toBeDisabled();
 
-  await expect.element(screen.getByText("Email or username is required")).toBeVisible();
-  await expect.element(screen.getByText("Password is required")).toBeVisible();
+  await screen.getByRole("textbox", { name: /email or username/i }).fill("ada@example.com");
+  await expect.element(signIn).toBeDisabled();
+
+  await screen.getByRole("textbox", { name: /password/i }).fill("secret");
+  await expect.element(signIn).toBeDisabled();
+
+  await screen.getByRole("textbox", { name: /password/i }).fill(validPassword);
+  await expect.element(signIn).toBeEnabled();
 
   await screen.getByRole("textbox", { name: /email or username/i }).fill("   ");
-  await screen.getByRole("button", { name: "Sign in" }).click();
-
-  await expect.element(screen.getByText("Email or username is required")).toBeVisible();
+  await expect.element(signIn).toBeDisabled();
   expect(login).not.toHaveBeenCalled();
 });
 
@@ -67,29 +74,39 @@ test("signs in with the trimmed identifier and closes", async () => {
   });
 
   await screen.getByRole("textbox", { name: /email or username/i }).fill("  ada@example.com  ");
-  await screen.getByRole("textbox", { name: /password/i }).fill("secret");
+  await screen.getByRole("textbox", { name: /password/i }).fill(validPassword);
   await screen.getByRole("checkbox", { name: "Remember me" }).click();
   await screen.getByRole("button", { name: "Sign in" }).click();
 
   await expect.poll(() => login.mock.calls).toEqual([
-    [{ email: "ada@example.com", password: "secret", rememberMe: true }],
+    [{ email: "ada@example.com", password: validPassword, rememberMe: true }],
   ]);
   await expect.poll(() => onClose.mock.calls.length).toBe(1);
 });
 
 test("shows the sign-in error and stays open", async () => {
-  login.mockRejectedValue(new Error("Incorrect password"));
+  login.mockRejectedValue(new Error("Unauthorized"));
   const onClose = vi.fn();
   const screen = await render(<LoginDialog open onClose={onClose} onRegister={vi.fn()} />, {
     wrapper: Providers,
   });
 
   await screen.getByRole("textbox", { name: /email or username/i }).fill("ada@example.com");
-  await screen.getByRole("textbox", { name: /password/i }).fill("secret");
+  await screen.getByRole("textbox", { name: /password/i }).fill(validPassword);
   await screen.getByRole("button", { name: "Sign in" }).click();
 
-  await expect.element(screen.getByRole("alert")).toHaveTextContent("Incorrect password");
+  const alert = screen.getByRole("alert");
+  await expect.element(alert).toHaveTextContent("Email/username or password was incorrect");
   expect(onClose).not.toHaveBeenCalled();
+
+  await screen.getByRole("textbox", { name: /email or username/i }).click();
+  await expect.element(alert).not.toBeInTheDocument();
+
+  await screen.getByRole("button", { name: "Sign in" }).click();
+  await expect.element(screen.getByRole("alert")).toBeVisible();
+
+  await screen.getByRole("textbox", { name: /password/i }).click();
+  await expect.element(screen.getByRole("alert")).not.toBeInTheDocument();
 });
 
 test("shows that sign-in is in progress", async () => {
@@ -105,7 +122,7 @@ test("shows that sign-in is in progress", async () => {
   });
 
   await screen.getByRole("textbox", { name: /email or username/i }).fill("ada@example.com");
-  await screen.getByRole("textbox", { name: /password/i }).fill("secret");
+  await screen.getByRole("textbox", { name: /password/i }).fill(validPassword);
   const submitted = screen.getByRole("button", { name: "Sign in" }).click();
   const pending = expect
     .element(screen.getByRole("button", { name: "Signing in…" }))

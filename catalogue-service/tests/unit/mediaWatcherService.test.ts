@@ -5,6 +5,12 @@ function metadataFilePath(filePath: string): string {
   return path.resolve(filePath).replace(/\\/g, "/");
 }
 
+/** Mirrors resolveStoragePath so expectations stay valid on POSIX CI runners. */
+function storagePath(watcherRoot: string, fileFromJson: string): string {
+  const normalizedRelative = fileFromJson.replace(/\\/g, "/");
+  return path.resolve(watcherRoot, normalizedRelative).replace(/\\/g, "/");
+}
+
 const state = vi.hoisted(() => {
   const handlers: Record<string, (arg: string) => void | Promise<void>> = {};
   return {
@@ -294,7 +300,7 @@ describe("mediaWatcherService delete cleanup", () => {
     expect(moviePayload).toBeDefined();
     expect(moviePayload).toMatchObject({
       title: "Big Fish",
-      url: "C:/temp/leffat/Big Fish/big-fish.mp4",
+      url: storagePath("C:/temp/leffat", "Big Fish\\big-fish.mp4"),
       hasExtras: true,
       runtime: 120,
       metadataFile: metadataFilePath("C:/temp/leffat/big-fish.json"),
@@ -307,12 +313,12 @@ describe("mediaWatcherService delete cleanup", () => {
       {
         title: "Edward Bloom at Large",
         runtime: "8:46",
-        url: "C:/temp/leffat/Big Fish/edward-bloom-at-large.mp4",
+        url: storagePath("C:/temp/leffat", "Big Fish\\edward-bloom-at-large.mp4"),
       },
       {
         title: "Amos at the Circus",
         runtime: "4:38",
-        url: "C:/temp/leffat/Big Fish/amos-at-the-circus.mp4",
+        url: storagePath("C:/temp/leffat", "Big Fish\\amos-at-the-circus.mp4"),
       },
     ]);
   });
@@ -353,7 +359,7 @@ describe("mediaWatcherService delete cleanup", () => {
     expect(moviePayload).toBeDefined();
     expect(moviePayload).toMatchObject({
       title: "Jackie Brown",
-      url: "C:/temp/leffat/Jackie Brown/master.m3u8",
+      url: storagePath("C:/temp/leffat", "Jackie Brown\\master.m3u8"),
       hasExtras: false,
       runtime: 148,
       metadataFile: metadataFilePath("C:/temp/leffat/jackie-brown.json"),
@@ -403,7 +409,7 @@ describe("mediaWatcherService delete cleanup", () => {
     expect(state.refreshDiscoveredMovieMock).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Big Fish",
-        url: "C:/temp/leffat/Big Fish/master.m3u8",
+        url: storagePath("C:/temp/leffat", "Big Fish\\master.m3u8"),
         metadataFile: metadataFilePath("C:/temp/leffat/big-fish.json"),
       }),
     );
