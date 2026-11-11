@@ -9,6 +9,10 @@ vi.mock("../../src/infra/db/repositories/localMovieRepository.js", () => ({
   getMovieByIdWithExtras: getMovieByIdMock,
 }));
 
+vi.mock("../../src/infra/db/repositories/localSeriesRepository.js", () => ({
+  getSeriesNodeById: vi.fn(),
+}));
+
 vi.mock("../../src/modules/media-paths/mediaPathService.js", () => ({
   getMediaPaths: getMediaPathsMock,
 }));

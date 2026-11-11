@@ -1,0 +1,110 @@
+{
+  "DVD": {
+    "Title": "Twin Peaks",
+    "Year": 1990
+  },
+  "Seasons": {
+    "1": {
+      "Episodes": {
+        "1": {
+          "Original": {
+            "File" : "Twin Peaks\\s1\\twin-peaks-s1e1-the-pilot-original-version\\master.m3u8",
+            "Runtime": "1:30:09"
+          },
+          "Alternate": {
+            "File": "Twin Peaks\\s1\\twin-peaks-s1e1-the-pilot-international-version\\master.m3u8",
+            "Runtime": "1:26:57"
+          }
+        },
+        "2": {
+          "File": "Twin Peaks\\s1\\twin-peaks-s1e2\\master.m3u8",
+          "Runtime": "44:31"
+        },
+        "3": {
+          "File": "Twin Peaks\\s1\\twin-peaks-s1e3\\master.m3u8",
+          "Runtime": "46:16"
+        },
+        "4": {
+          "File": "Twin Peaks\\s1\\twin-peaks-s1e4\\master.m3u8",
+          "Runtime": "44:59"
+        }
+      }
+    },
+    "2": {
+      "Episodes": {
+        "1": {
+          "File": "Twin Peaks\\s2\\twin-peaks-s2e1\\master.m3u8",
+          "Runtime": "1:30:19"
+        },
+        "2": {
+          "File": "Twin Peaks\\s2\\twin-peaks-s2e2\\master.m3u8",
+          "Runtime": "44:58"
+        },
+        "3": {
+          "File": "Twin Peaks\\s2\\twin-peaks-s2e3\\master.m3u8",
+          "Runtime": "45:08"
+        }
+      },
+      "Extras": {
+        "1": {
+          "Title": "Deleted Scenes",
+          "File":"Twin Peaks\\s2\\deleted-scenes.mp4",
+          "Runtime": "1:00"
+        },
+        "2": {
+          "Title": "Production Documents",
+          "File":"Twin Peaks\\s2\\production-notes.mp4",
+          "Runtime": "1:00"
+        }
+      }
+    },
+    "Extras": {
+      "1: A Slice of Lynch Featurette": {
+        "File":"Twin Peaks\\extras\\a-slice-of-lynch.mp4",
+        "Runtime": "30:02"
+      },
+      "2: Secrets From Another Place: Creating Twin Peaks": {
+        "Freshly Squeezed: Creating Season One": {
+          "File":"Twin Peaks\\extras\\secrets-creating-season-one.mp4",
+          "Runtime": "30:38"
+        },
+        "Into the Night: Creating Season Two": {
+          "File":"Twin Peaks\\extras\\secrets-creating-season-two.mp4",
+          "Runtime": "30:21"
+        }
+      },
+      "4: Twin Peaks Festival": {
+        "Return to Twin Peaks": {
+          "File":"Twin Peaks\\extras\\festival-return-to-twin-peaks.mp4",
+          "Runtime": "19:43"
+        },
+        "Map of Twin Peaks": {
+          "Town Sign": {
+            "File":"Twin Peaks\\extras\\festival-map-town-sign.mp4",
+            "Runtime": "0:35"
+          },
+          "Packard Lodge": {
+            "File":"Twin Peaks\\extras\\festival-map-packard-lodge.mp4",
+            "Runtime": "1:16"
+          }
+        }
+      },
+      "The Black Lodge Archive": {
+        "Falling, Music Video": {
+          "File":"Twin Peaks\\extras\\black-lodge-falling-music-video.mp4",
+          "Runtime": "4:22"
+        },
+        "Georgia Coffee Commercials": {
+          "Lost": {
+            "File":"Twin Peaks\\extras\\black-lodge-commercial-lost.mp4",
+            "Runtime": "0:45"
+          },
+          "Cherry Pie": {
+            "File":"Twin Peaks\\extras\\black-lodge-commercial-cherry-pie.mp4",
+            "Runtime": "0:46"
+          }
+        }
+      }
+    }
+  }
+}

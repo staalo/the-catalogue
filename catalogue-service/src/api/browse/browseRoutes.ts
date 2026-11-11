@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../modules/auth/middleware.js";
-import { browseMovies, browseTv } from "../../modules/browse/browseService.js";
+import {
+  browseMovies,
+  browseTv,
+  getSeriesDetail,
+} from "../../modules/browse/browseService.js";
 
 interface BrowseQuery {
   page?: number;
@@ -34,6 +38,26 @@ export async function browseRoutes(app: FastifyInstance): Promise<void> {
     async (request, reply) => {
       const page = Math.max(1, Number(request.query.page) || 1);
       return reply.send(await browseTv(page));
+    },
+  );
+
+  app.get<{ Params: { seriesId: string } }>(
+    "/api/browse/tv/:seriesId",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const seriesId = Number(request.params.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        return reply
+          .status(400)
+          .send({ error: "Series ID must be a positive integer." });
+      }
+
+      const detail = await getSeriesDetail(seriesId);
+      if (!detail) {
+        return reply.status(404).send({ error: "TV series not found." });
+      }
+
+      return reply.send(detail);
     },
   );
 }

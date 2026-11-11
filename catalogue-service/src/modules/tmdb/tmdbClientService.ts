@@ -246,6 +246,208 @@ export async function fetchMovieDetailsFromTmdb(
   }
 }
 
+export interface TmdbCreatedBy {
+  id: number;
+  credit_id?: string;
+  name: string;
+  original_name?: string;
+  gender?: number | null;
+  profile_path?: string | null;
+}
+
+/** Fields returned by GET /tv/{seriesId} without append_to_response. */
+export interface TmdbTvDetails {
+  id: number;
+  name: string;
+  original_name?: string;
+  overview?: string;
+  first_air_date?: string;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+  vote_average?: number;
+  vote_count?: number;
+  popularity?: number;
+  original_language?: string;
+  adult?: boolean;
+  homepage?: string | null;
+  tagline?: string | null;
+  episode_run_time?: number[];
+  genres?: Array<{ id: number; name: string }>;
+  created_by?: TmdbCreatedBy[];
+}
+
+export interface TvSeasonEpisodeDetails {
+  episodeNumber: number;
+  name: string | null;
+  overview: string | null;
+  runtimeMinutes: number | null;
+  stillPath: string | null;
+}
+
+/**
+ * Build a TMDB TV search URL.
+ * The year filter is first_air_date_year, not the movie `year` parameter.
+ */
+export function buildTmdbTvSearchUrl(title: string, firstAirYear?: number): URL {
+  const url = new URL("https://api.themoviedb.org/3/search/tv");
+  url.searchParams.set("api_key", process.env["TMDB_API_KEY"] ?? "");
+  url.searchParams.set("query", title);
+
+  if (firstAirYear) {
+    url.searchParams.set("first_air_date_year", String(firstAirYear));
+  }
+
+  return url;
+}
+
+/** GET /tv/{seriesId}. The id comes from the search result. */
+export function buildTmdbTvDetailsUrl(tmdbId: number): URL {
+  const url = new URL(`https://api.themoviedb.org/3/tv/${tmdbId}`);
+  url.searchParams.set("api_key", process.env["TMDB_API_KEY"] ?? "");
+  return url;
+}
+
+/** GET /tv/{seriesId}/season/{seasonNumber}. */
+export function buildTmdbTvSeasonUrl(
+  tmdbId: number,
+  seasonNumber: number,
+): URL {
+  const url = new URL(
+    `https://api.themoviedb.org/3/tv/${tmdbId}/season/${seasonNumber}`,
+  );
+  url.searchParams.set("api_key", process.env["TMDB_API_KEY"] ?? "");
+  return url;
+}
+
+/**
+ * Series details list creators, not a cast or crew credit list.
+ * Store each creator as a crew row with the job Creator.
+ */
+export function mapTmdbCreator(person: TmdbCreatedBy): MappedLocalCrewMember {
+  return {
+    personId: person.id,
+    name: person.name,
+    job: "Creator",
+    department: "Creator",
+    profilePath: person.profile_path,
+    adult: false,
+    creditId: person.credit_id,
+    gender: person.gender,
+    knownForDepartment: undefined,
+    originalName: person.original_name,
+    popularity: 0,
+  };
+}
+
+/**
+ * Search TMDB for a TV series by title and optional first-air year.
+ * Returns full details for the top result, or null when nothing matches.
+ */
+export async function searchTvOnTmdb(
+  title: string,
+  firstAirYear?: number,
+): Promise<TmdbTvDetails | null> {
+  try {
+    await rateLimit();
+
+    const url = buildTmdbTvSearchUrl(title, firstAirYear);
+    console.log(
+      `Searching TMDB TV for: ${title}${firstAirYear ? ` (${firstAirYear})` : ""}`,
+    );
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      console.error(`TMDB TV search failed: ${response.status}`);
+      return null;
+    }
+
+    const data = (await response.json()) as { results?: Array<{ id: number }> };
+    const result = data.results?.[0];
+    if (!result) {
+      return null;
+    }
+
+    return await fetchTvDetailsFromTmdb(result.id);
+  } catch (error) {
+    console.error("Error searching TMDB TV:", error);
+    return null;
+  }
+}
+
+export async function fetchTvDetailsFromTmdb(
+  tmdbId: number,
+): Promise<TmdbTvDetails | null> {
+  try {
+    await rateLimit();
+
+    const url = buildTmdbTvDetailsUrl(tmdbId);
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      console.error(`TMDB TV fetch failed: ${response.status}`);
+      return null;
+    }
+
+    return (await response.json()) as TmdbTvDetails;
+  } catch (error) {
+    console.error("Error fetching TMDB TV details:", error);
+    return null;
+  }
+}
+
+/**
+ * Episode name, overview, runtime, and still from GET /tv/{id}/season/{n}.
+ * An empty list means the season could not be loaded.
+ */
+export async function fetchTvSeasonDetails(
+  tmdbId: number,
+  seasonNumber: number,
+): Promise<TvSeasonEpisodeDetails[]> {
+  try {
+    await rateLimit();
+
+    const url = buildTmdbTvSeasonUrl(tmdbId, seasonNumber);
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      console.error(`TMDB TV season fetch failed: ${response.status}`);
+      return [];
+    }
+
+    const data = (await response.json()) as {
+      episodes?: Array<{
+        episode_number?: number;
+        name?: string;
+        overview?: string;
+        runtime?: number | null;
+        still_path?: string | null;
+      }>;
+    };
+
+    const episodes: TvSeasonEpisodeDetails[] = [];
+    for (const episode of data.episodes ?? []) {
+      if (typeof episode.episode_number !== "number") {
+        continue;
+      }
+      const name = episode.name?.trim() ?? "";
+      const overview = episode.overview?.trim() ?? "";
+      episodes.push({
+        episodeNumber: episode.episode_number,
+        name: name.length > 0 ? name : null,
+        overview: overview.length > 0 ? overview : null,
+        runtimeMinutes:
+          typeof episode.runtime === "number" && episode.runtime > 0
+            ? episode.runtime
+            : null,
+        stillPath: episode.still_path?.trim() || null,
+      });
+    }
+    return episodes;
+  } catch (error) {
+    console.error("Error fetching TMDB TV season:", error);
+    return [];
+  }
+}
+
 /**
  * Extract year from a filename like "Avatar.2009.1080p.BluRay.x264.mkv"
  * Returns the 4-digit year if found, otherwise undefined.

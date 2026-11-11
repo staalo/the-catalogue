@@ -24,11 +24,14 @@ vi.mock("../../src/modules/browse/browseService.js", () => ({
     totalPages: 0,
     totalResults: 0,
   })),
+  getSeriesDetail: vi.fn(async () => null),
 }));
 
 vi.mock("../../src/modules/playback/playbackProgressService.js", () => ({
   getMoviePlaybackProgress: getMoviePlaybackProgressMock,
   saveMoviePlaybackProgress: saveMoviePlaybackProgressMock,
+  getTvPlaybackProgress: vi.fn(() => ({ items: [] })),
+  saveTvPlaybackProgress: vi.fn(),
 }));
 
 async function createApp() {

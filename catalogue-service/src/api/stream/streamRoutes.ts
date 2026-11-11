@@ -5,6 +5,8 @@ import {
   tryGetMovieAssetStream,
   tryGetExtraStream,
   tryGetExtraAssetStream,
+  tryGetTvNodeStream,
+  tryGetTvNodeAssetStream,
   StreamStatus,
   type StreamFile,
 } from "../../modules/stream/streamService.js";
@@ -125,6 +127,57 @@ export async function registerStreamRoutes(
         relativePath,
       );
 
+      if (status === StreamStatus.NotFound) {
+        return reply.status(404).send({ error: "Asset not found" });
+      }
+      if (status === StreamStatus.Forbidden) {
+        return reply.status(403).send({ error: "Forbidden" });
+      }
+
+      return sendStreamFile(request, reply, file!);
+    },
+  );
+
+  app.get<{ Params: { seriesId: string; nodeId: string } }>(
+    "/api/stream/tv/:seriesId/nodes/:nodeId",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const seriesId = parseInt(request.params.seriesId, 10);
+      const nodeId = parseInt(request.params.nodeId, 10);
+      if (isNaN(seriesId) || isNaN(nodeId)) {
+        return reply
+          .status(400)
+          .send({ error: "Invalid seriesId or nodeId" });
+      }
+
+      const [status, file] = await tryGetTvNodeStream(seriesId, nodeId);
+      if (status === StreamStatus.NotFound) {
+        return reply.status(404).send({ error: "TV item not found" });
+      }
+      if (status === StreamStatus.Forbidden) {
+        return reply.status(403).send({ error: "Forbidden" });
+      }
+
+      return sendStreamFile(request, reply, file!);
+    },
+  );
+
+  app.get<{ Params: { seriesId: string; nodeId: string; "*": string } }>(
+    "/api/stream/tv/:seriesId/nodes/:nodeId/*",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const seriesId = parseInt(request.params.seriesId, 10);
+      const nodeId = parseInt(request.params.nodeId, 10);
+      const relativePath = (request.params as { "*": string })["*"] || "";
+      if (isNaN(seriesId) || isNaN(nodeId) || !relativePath) {
+        return reply.status(400).send({ error: "Invalid parameters" });
+      }
+
+      const [status, file] = await tryGetTvNodeAssetStream(
+        seriesId,
+        nodeId,
+        relativePath,
+      );
       if (status === StreamStatus.NotFound) {
         return reply.status(404).send({ error: "Asset not found" });
       }
