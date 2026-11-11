@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildTmdbMovieSearchUrl,
+  buildTmdbTvDetailsUrl,
+  buildTmdbTvSearchUrl,
+  buildTmdbTvSeasonUrl,
   mapTmdbCastMember,
+  mapTmdbCreator,
   mapTmdbCrewMember,
 } from "../../src/modules/tmdb/tmdbClientService.js";
 
@@ -19,6 +23,63 @@ describe("buildTmdbMovieSearchUrl", () => {
 
     expect(url.searchParams.get("query")).toBe("Jackie Brown");
     expect(url.searchParams.get("year")).toBeNull();
+  });
+});
+
+describe("buildTmdbTvSearchUrl", () => {
+  it("filters TV search by first air year", () => {
+    const url = buildTmdbTvSearchUrl("Twin Peaks", 1990);
+
+    expect(url.pathname).toBe("/3/search/tv");
+    expect(url.searchParams.get("query")).toBe("Twin Peaks");
+    expect(url.searchParams.get("first_air_date_year")).toBe("1990");
+    expect(url.searchParams.get("year")).toBeNull();
+    expect(url.searchParams.get("include_adult")).toBeNull();
+  });
+});
+
+describe("buildTmdbTvDetailsUrl", () => {
+  it("requests the series by id with no extra resources", () => {
+    const url = buildTmdbTvDetailsUrl(1920);
+
+    expect(url.pathname).toBe("/3/tv/1920");
+    expect(url.searchParams.get("append_to_response")).toBeNull();
+  });
+});
+
+describe("buildTmdbTvSeasonUrl", () => {
+  it("puts the season number in the path", () => {
+    const url = buildTmdbTvSeasonUrl(1920, 1);
+
+    expect(url.pathname).toBe("/3/tv/1920/season/1");
+    expect(url.searchParams.get("append_to_response")).toBeNull();
+  });
+});
+
+describe("mapTmdbCreator", () => {
+  it("stores a series creator as crew with the job Creator", () => {
+    expect(
+      mapTmdbCreator({
+        id: 12240,
+        credit_id: "52542276760ee3132800068e",
+        name: "David Lynch",
+        original_name: "David Lynch",
+        gender: 2,
+        profile_path: "/b8mo2h.jpg",
+      }),
+    ).toEqual({
+      personId: 12240,
+      name: "David Lynch",
+      job: "Creator",
+      department: "Creator",
+      profilePath: "/b8mo2h.jpg",
+      adult: false,
+      creditId: "52542276760ee3132800068e",
+      gender: 2,
+      knownForDepartment: undefined,
+      originalName: "David Lynch",
+      popularity: 0,
+    });
   });
 });
 

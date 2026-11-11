@@ -9,14 +9,25 @@ import { db } from "../../infra/db/client.js";
 import { scanStatus } from "../../infra/db/schema.js";
 import { eq } from "drizzle-orm";
 import * as mediaWatcherRepo from "../../infra/db/repositories/mediaWatcherRepository.js";
+import * as seriesRepo from "../../infra/db/repositories/localSeriesRepository.js";
 import { getMediaPaths } from "../media-paths/mediaPathService.js";
 import {
+  applyTvSeasonDetails,
+  manifestSeasonNumbers,
+  parseTvManifest,
+  type ParsedTvNode,
+} from "../tv/parseTvManifest.js";
+import {
   searchMovieOnTmdb,
+  searchTvOnTmdb,
+  fetchTvSeasonDetails,
   extractTitleFromFilename,
   extractYearFromFilename,
   mapTmdbCastMember,
   mapTmdbCrewMember,
+  mapTmdbCreator,
 } from "../tmdb/tmdbClientService.js";
+import type { DiscoveredSeriesData } from "../../infra/db/repositories/localSeriesRepository.js";
 
 const WATCHER_EXTENSION = ".json";
 const RECENT_EVENT_WINDOW_MS = 15000;
@@ -253,6 +264,14 @@ async function onJsonMetadataDeleted(filePath: string): Promise<void> {
   }
 
   const metadataFile = normalizeMetadataFilePath(filePath);
+  if (resolveLibraryKind(filePath) === "tv") {
+    const deletedRows = seriesRepo.deleteSeriesByMetadataFile(metadataFile);
+    console.log(
+      `[MediaWatcher] TV metadata file deleted: ${filePath}. Removed ${deletedRows} series row(s).`,
+    );
+    return;
+  }
+
   const deletedRows = mediaWatcherRepo.deleteMoviesByMetadataFile(metadataFile);
 
   console.log(
@@ -280,12 +299,139 @@ function shouldIgnoreWatcherEvent(filePath: string): boolean {
   return false;
 }
 
+async function processTvMetadataFile(
+  jsonFilePath: string,
+  eventType: "add" | "change",
+  libraryRoot?: string,
+): Promise<void> {
+  const metadataFile = normalizeMetadataFilePath(jsonFilePath);
+
+  if (eventType === "add") {
+    const existingId = seriesRepo.findSeriesIdByMetadataFile(metadataFile);
+    if (existingId != null && !seriesRepo.isSeriesMissingTmdbById(existingId)) {
+      return;
+    }
+  }
+
+  try {
+    const jsonContent = await readFile(jsonFilePath, "utf-8");
+    const metadata = JSON.parse(jsonContent) as unknown;
+    const watcherRoot =
+      findBestWatcherRoot(jsonFilePath) ??
+      libraryRoot ??
+      path.dirname(jsonFilePath);
+    const parsed = parseTvManifest(metadata, watcherRoot);
+
+    if (!parsed) {
+      console.warn(
+        `[MediaWatcher] Invalid TV metadata structure in: ${jsonFilePath}`,
+      );
+      return;
+    }
+
+    await warnMissingTvFiles(parsed.nodes, jsonFilePath);
+
+    const existingId = seriesRepo.findSeriesIdByMetadataFile(metadataFile);
+    const shouldRefresh =
+      eventType === "change" ||
+      (existingId != null && seriesRepo.isSeriesMissingTmdbById(existingId));
+
+    if (existingId != null && !shouldRefresh) {
+      return;
+    }
+
+    const tmdbResult = await searchTvOnTmdb(parsed.title, parsed.year);
+    if (tmdbResult) {
+      for (const seasonNumber of manifestSeasonNumbers(parsed.nodes)) {
+        const episodes = await fetchTvSeasonDetails(
+          tmdbResult.id,
+          seasonNumber,
+        );
+        applyTvSeasonDetails(parsed.nodes, seasonNumber, episodes);
+      }
+    }
+
+    const seriesData: DiscoveredSeriesData = {
+      title: tmdbResult?.name || parsed.title,
+      runtime: tmdbResult?.episode_run_time?.[0] ?? 0,
+      adult: tmdbResult?.adult ?? false,
+      hasExtras: parsed.hasExtras,
+      metadataFile,
+    };
+
+    if (typeof parsed.year === "number") seriesData.year = parsed.year;
+    if (tmdbResult) seriesData.tmdbId = tmdbResult.id;
+    if (tmdbResult?.original_name) {
+      seriesData.originalTitle = tmdbResult.original_name;
+    }
+    if (tmdbResult?.overview) seriesData.overview = tmdbResult.overview;
+    if (tmdbResult?.first_air_date) {
+      seriesData.releaseDate = tmdbResult.first_air_date;
+    }
+    if (tmdbResult?.popularity) seriesData.popularity = tmdbResult.popularity;
+    if (tmdbResult?.vote_average) {
+      seriesData.voteAverage = tmdbResult.vote_average;
+    }
+    if (tmdbResult?.vote_count) seriesData.voteCount = tmdbResult.vote_count;
+    if (tmdbResult?.poster_path) seriesData.posterPath = tmdbResult.poster_path;
+    if (tmdbResult?.backdrop_path) {
+      seriesData.backdropPath = tmdbResult.backdrop_path;
+    }
+    if (tmdbResult?.homepage) seriesData.homepage = tmdbResult.homepage;
+    if (tmdbResult?.original_language) {
+      seriesData.originalLanguage = tmdbResult.original_language;
+    }
+    if (tmdbResult?.tagline) seriesData.tagline = tmdbResult.tagline;
+
+    const seriesId =
+      shouldRefresh && existingId != null
+        ? seriesRepo.refreshDiscoveredSeries(seriesData, parsed.nodes)
+        : seriesRepo.insertDiscoveredSeries(seriesData, parsed.nodes);
+
+    if (tmdbResult?.created_by && tmdbResult.created_by.length > 0) {
+      seriesRepo.insertSeriesCrew(
+        seriesId,
+        tmdbResult.created_by.map(mapTmdbCreator),
+      );
+    }
+
+    if (tmdbResult?.genres) {
+      seriesRepo.insertSeriesGenres(seriesId, tmdbResult.genres);
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(
+      `[MediaWatcher] Error processing TV JSON file ${jsonFilePath}:`,
+      errorMsg,
+    );
+  }
+}
+
+async function warnMissingTvFiles(
+  nodes: ParsedTvNode[],
+  source: string,
+): Promise<void> {
+  for (const node of nodes) {
+    if (node.filePath && !(await pathExists(node.filePath))) {
+      console.warn(
+        `[MediaWatcher] TV file from JSON does not exist: ${node.filePath} (source: ${source})`,
+      );
+    }
+    await warnMissingTvFiles(node.children, source);
+  }
+}
+
 async function processJsonMetadataFile(
   jsonFilePath: string,
   eventType: "add" | "change",
   libraryRoot?: string,
 ): Promise<void> {
   if (!isTopLevelMetadataFile(jsonFilePath, libraryRoot)) {
+    return;
+  }
+
+  if (resolveLibraryKind(jsonFilePath, libraryRoot) === "tv") {
+    await processTvMetadataFile(jsonFilePath, eventType, libraryRoot);
     return;
   }
 
@@ -518,6 +664,32 @@ function resolveStoragePath(watcherRoot: string, fileFromJson: string): string {
   return absolutePath.replace(/\\/g, "/");
 }
 
+function resolveLibraryKind(
+  filePath: string,
+  libraryRoot?: string,
+): "movies" | "tv" {
+  const mediaPaths = getMediaPaths();
+  const candidates: Array<{ kind: "movies" | "tv"; root: string }> = [];
+
+  const consider = (kind: "movies" | "tv", root: string | null): void => {
+    if (!root) {
+      return;
+    }
+    if (libraryRoot && samePath(libraryRoot, root)) {
+      candidates.push({ kind, root });
+      return;
+    }
+    if (samePath(root, filePath) || isPathInsideRoot(root, filePath)) {
+      candidates.push({ kind, root });
+    }
+  };
+
+  consider("movies", mediaPaths.moviesPath);
+  consider("tv", mediaPaths.tvPath);
+  candidates.sort((a, b) => b.root.length - a.root.length);
+  return candidates[0]?.kind ?? "movies";
+}
+
 function findBestWatcherRoot(targetPath: string): string | null {
   const candidate = Array.from(activeWatchers.keys())
     .filter(
@@ -567,6 +739,26 @@ function isMetadataUnderLibrary(
   libraryRoot: string,
 ): boolean {
   return samePath(path.dirname(metadataFile), libraryRoot);
+}
+
+async function reconcileMissingSeriesMetadataFiles(
+  mediaPath: string,
+): Promise<number> {
+  let removed = 0;
+
+  for (const series of seriesRepo.listSeriesWithMetadataFile()) {
+    if (!isMetadataUnderLibrary(series.metadataFile, mediaPath)) {
+      continue;
+    }
+
+    if (!(await pathExists(series.metadataFile))) {
+      removed += seriesRepo.deleteSeriesByMetadataFile(series.metadataFile);
+    }
+
+    await yieldToEventLoop();
+  }
+
+  return removed;
 }
 
 async function reconcileMissingMetadataFiles(
@@ -668,7 +860,11 @@ async function performScan(scanId: number, mediaPath: string): Promise<void> {
     await yieldToEventLoop();
   }
 
-  await reconcileMissingMetadataFiles(mediaPath);
+  if (resolveLibraryKind(mediaPath, mediaPath) === "tv") {
+    await reconcileMissingSeriesMetadataFiles(mediaPath);
+  } else {
+    await reconcileMissingMetadataFiles(mediaPath);
+  }
 }
 
 async function pathExists(filePath: string): Promise<boolean> {

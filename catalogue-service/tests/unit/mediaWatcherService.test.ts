@@ -54,6 +54,35 @@ const state = vi.hoisted(() => {
     >(async () => null),
     insertMovieCastMock: vi.fn(),
     insertMovieCrewMock: vi.fn(),
+    findSeriesIdByMetadataFileMock: vi.fn<(metadataFile: string) => number | null>(),
+    isSeriesMissingTmdbByIdMock: vi.fn<(seriesId: number) => boolean>(),
+    insertDiscoveredSeriesMock: vi.fn<
+      (series: Record<string, unknown>, nodes: unknown[]) => number
+    >(() => 1),
+    refreshDiscoveredSeriesMock: vi.fn<
+      (series: Record<string, unknown>, nodes: unknown[]) => number
+    >(() => 1),
+    deleteSeriesByMetadataFileMock: vi.fn<(metadataFile: string) => number>(),
+    listSeriesWithMetadataFileMock: vi.fn(
+      () => [] as Array<{ id: number; metadataFile: string }>,
+    ),
+    insertSeriesCastMock: vi.fn(),
+    insertSeriesCrewMock: vi.fn(),
+    insertSeriesGenresMock: vi.fn(),
+    insertSeriesTrailerMock: vi.fn(),
+    searchTvOnTmdbMock: vi.fn<
+      typeof import("../../src/modules/tmdb/tmdbClientService.js").searchTvOnTmdb
+    >(async () => null),
+    fetchTvSeasonDetailsMock: vi.fn(
+      async () =>
+        [] as Array<{
+          episodeNumber: number;
+          name: string | null;
+          overview: string | null;
+          runtimeMinutes: number | null;
+          stillPath: string | null;
+        }>,
+    ),
   };
 });
 
@@ -120,6 +149,19 @@ vi.mock("../../src/infra/db/repositories/mediaWatcherRepository.js", () => ({
   setMetadataFileIfMissing: state.setMetadataFileIfMissingMock,
 }));
 
+vi.mock("../../src/infra/db/repositories/localSeriesRepository.js", () => ({
+  findSeriesIdByMetadataFile: state.findSeriesIdByMetadataFileMock,
+  isSeriesMissingTmdbById: state.isSeriesMissingTmdbByIdMock,
+  insertDiscoveredSeries: state.insertDiscoveredSeriesMock,
+  refreshDiscoveredSeries: state.refreshDiscoveredSeriesMock,
+  deleteSeriesByMetadataFile: state.deleteSeriesByMetadataFileMock,
+  listSeriesWithMetadataFile: state.listSeriesWithMetadataFileMock,
+  insertSeriesCast: state.insertSeriesCastMock,
+  insertSeriesCrew: state.insertSeriesCrewMock,
+  insertSeriesGenres: state.insertSeriesGenresMock,
+  insertSeriesTrailer: state.insertSeriesTrailerMock,
+}));
+
 vi.mock(
   "../../src/modules/tmdb/tmdbClientService.js",
   async (importOriginal) => {
@@ -130,6 +172,8 @@ vi.mock(
     return {
       ...actual,
       searchMovieOnTmdb: state.searchMovieOnTmdbMock,
+      searchTvOnTmdb: state.searchTvOnTmdbMock,
+      fetchTvSeasonDetails: state.fetchTvSeasonDetailsMock,
       extractTitleFromFilename: vi.fn((name: string) => name),
       extractYearFromFilename: vi.fn(() => undefined),
     };
@@ -162,6 +206,18 @@ describe("mediaWatcherService delete cleanup", () => {
     state.searchMovieOnTmdbMock.mockReset();
     state.insertMovieCastMock.mockReset();
     state.insertMovieCrewMock.mockReset();
+    state.findSeriesIdByMetadataFileMock.mockReset();
+    state.isSeriesMissingTmdbByIdMock.mockReset();
+    state.insertDiscoveredSeriesMock.mockReset();
+    state.refreshDiscoveredSeriesMock.mockReset();
+    state.deleteSeriesByMetadataFileMock.mockReset();
+    state.listSeriesWithMetadataFileMock.mockReset();
+    state.insertSeriesCastMock.mockReset();
+    state.insertSeriesCrewMock.mockReset();
+    state.insertSeriesGenresMock.mockReset();
+    state.insertSeriesTrailerMock.mockReset();
+    state.searchTvOnTmdbMock.mockReset();
+    state.fetchTvSeasonDetailsMock.mockReset();
 
     state.movieExistsByUrlMock.mockReturnValue(false);
     state.isMissingTmdbMetadataMock.mockReturnValue(false);
@@ -177,6 +233,14 @@ describe("mediaWatcherService delete cleanup", () => {
     state.listMoviesWithMetadataFileMock.mockReturnValue([]);
     state.findMovieIdByMetadataFileMock.mockReturnValue(null);
     state.deleteMoviesByMetadataFileMock.mockReturnValue(1);
+    state.findSeriesIdByMetadataFileMock.mockReturnValue(null);
+    state.isSeriesMissingTmdbByIdMock.mockReturnValue(false);
+    state.insertDiscoveredSeriesMock.mockReturnValue(1);
+    state.refreshDiscoveredSeriesMock.mockReturnValue(1);
+    state.deleteSeriesByMetadataFileMock.mockReturnValue(1);
+    state.listSeriesWithMetadataFileMock.mockReturnValue([]);
+    state.searchTvOnTmdbMock.mockResolvedValue(null);
+    state.fetchTvSeasonDetailsMock.mockResolvedValue([]);
   });
 
   it("marks leftover running scans as failed before starting a new one", async () => {
@@ -295,6 +359,8 @@ describe("mediaWatcherService delete cleanup", () => {
     expect(state.searchMovieOnTmdbMock).toHaveBeenCalledWith("Big Fish", 2003);
 
     expect(state.insertDiscoveredMovieMock).toHaveBeenCalledTimes(1);
+    expect(state.insertDiscoveredSeriesMock).not.toHaveBeenCalled();
+    expect(state.searchTvOnTmdbMock).not.toHaveBeenCalled();
     const movieCall = state.insertDiscoveredMovieMock.mock.calls[0];
     const moviePayload = movieCall?.[0] as Record<string, unknown> | undefined;
     expect(moviePayload).toBeDefined();
@@ -616,5 +682,195 @@ describe("mediaWatcherService delete cleanup", () => {
     expect(state.deleteMoviesByMetadataFileMock).not.toHaveBeenCalledWith(
       otherLibraryMetadata,
     );
+  });
+
+  it("imports a TV series tree and does not create a movie", async () => {
+    state.getMediaPathsMock.mockReturnValue({
+      moviesPath: null,
+      tvPath: "C:/temp/tv",
+    });
+    state.searchTvOnTmdbMock.mockResolvedValue({
+      id: 1920,
+      name: "Twin Peaks",
+      overview: "A town full of secrets.",
+      first_air_date: "1990-04-08",
+      episode_run_time: [47],
+      created_by: [
+        {
+          id: 12240,
+          credit_id: "52542276760ee3132800068e",
+          name: "David Lynch",
+          original_name: "David Lynch",
+          gender: 2,
+          profile_path: "/b8mo2h.jpg",
+        },
+      ],
+      genres: [{ id: 9648, name: "Mystery" }],
+    });
+    state.fetchTvSeasonDetailsMock.mockResolvedValue([
+      {
+        episodeNumber: 1,
+        name: "Pilot",
+        overview: "The body is found.",
+        runtimeMinutes: 95,
+        stillPath: "/pilot.jpg",
+      },
+    ]);
+    state.readFileMock.mockResolvedValue(
+      JSON.stringify({
+        DVD: { Title: "Twin Peaks", Year: 1990 },
+        Seasons: {
+          "1": {
+            Episodes: {
+              "1": {
+                Original: {
+                  File: "Twin Peaks\\s1\\original\\master.m3u8",
+                  Runtime: "1:30:09",
+                },
+                Alternate: {
+                  File: "Twin Peaks\\s1\\alternate\\master.m3u8",
+                  Runtime: "1:26:57",
+                },
+              },
+            },
+          },
+          Extras: {
+            "1: Featurette": {
+              File: "Twin Peaks\\extras\\featurette.mp4",
+              Runtime: "10:00",
+            },
+          },
+        },
+      }),
+    );
+
+    const service = await import("../../src/modules/media-watcher/index.js");
+    await service.setupFileWatchers();
+
+    const addHandler = state.handlers["add"];
+    expect(addHandler).toBeTypeOf("function");
+    await addHandler("C:/temp/tv/twin-peaks.json");
+
+    expect(state.searchMovieOnTmdbMock).not.toHaveBeenCalled();
+    expect(state.insertDiscoveredMovieMock).not.toHaveBeenCalled();
+    expect(state.searchTvOnTmdbMock).toHaveBeenCalledWith("Twin Peaks", 1990);
+    expect(state.fetchTvSeasonDetailsMock).toHaveBeenCalledWith(1920, 1);
+    expect(state.insertSeriesCastMock).not.toHaveBeenCalled();
+    expect(state.insertSeriesTrailerMock).not.toHaveBeenCalled();
+    expect(state.insertSeriesCrewMock).toHaveBeenCalledWith(1, [
+      expect.objectContaining({
+        personId: 12240,
+        name: "David Lynch",
+        job: "Creator",
+      }),
+    ]);
+    expect(state.insertSeriesGenresMock).toHaveBeenCalledWith(1, [
+      { id: 9648, name: "Mystery" },
+    ]);
+    expect(state.insertDiscoveredSeriesMock).toHaveBeenCalledTimes(1);
+
+    const [series, nodes] = state.insertDiscoveredSeriesMock.mock.calls[0] ?? [];
+    expect(series).toMatchObject({
+      title: "Twin Peaks",
+      overview: "A town full of secrets.",
+      releaseDate: "1990-04-08",
+      year: 1990,
+      runtime: 47,
+      hasExtras: true,
+      tmdbId: 1920,
+      metadataFile: metadataFilePath("C:/temp/tv/twin-peaks.json"),
+    });
+
+    const tree = nodes as Array<{
+      kind: string;
+      label: string;
+      children: Array<{
+        title: string | null;
+        overview?: string | null;
+        stillPath?: string | null;
+        runtime: string | null;
+        children: Array<{ label: string; filePath: string; runtime: string | null }>;
+      }>;
+    }>;
+    expect(tree[0]?.kind).toBe("season");
+    expect(tree[0]?.children[0]?.title).toBe("Pilot");
+    expect(tree[0]?.children[0]?.overview).toBe("The body is found.");
+    expect(tree[0]?.children[0]?.stillPath).toBe("/pilot.jpg");
+    expect(tree[0]?.children[0]?.runtime).toBeNull();
+    expect(tree[0]?.children[0]?.children[0]?.runtime).toBe("1:30:09");
+    expect(tree[0]?.children[0]?.children.map((child) => child.label)).toEqual([
+      "Original",
+      "Alternate",
+    ]);
+    expect(tree[0]?.children[0]?.children[0]?.filePath).toBe(
+      storagePath("C:/temp/tv", "Twin Peaks\\s1\\original\\master.m3u8"),
+    );
+    expect(tree[1]?.kind).toBe("extras");
+  });
+
+  it("removes a TV series by metadata file and leaves movies alone", async () => {
+    state.getMediaPathsMock.mockReturnValue({
+      moviesPath: "C:/temp/leffat",
+      tvPath: "C:/temp/tv",
+    });
+
+    const service = await import("../../src/modules/media-watcher/index.js");
+    await service.setupFileWatchers();
+
+    const unlinkHandler = state.handlers["unlink"];
+    expect(unlinkHandler).toBeTypeOf("function");
+    await unlinkHandler("C:/temp/tv/twin-peaks.json");
+
+    expect(state.deleteSeriesByMetadataFileMock).toHaveBeenCalledWith(
+      metadataFilePath("C:/temp/tv/twin-peaks.json"),
+    );
+    expect(state.deleteMoviesByMetadataFileMock).not.toHaveBeenCalled();
+  });
+
+  it("skips a TV rescan when the series is already enriched", async () => {
+    state.getMediaPathsMock.mockReturnValue({
+      moviesPath: null,
+      tvPath: "C:/temp/tv",
+    });
+    state.findSeriesIdByMetadataFileMock.mockReturnValue(9);
+    state.isSeriesMissingTmdbByIdMock.mockReturnValue(false);
+
+    const service = await import("../../src/modules/media-watcher/index.js");
+    await service.setupFileWatchers();
+
+    const addHandler = state.handlers["add"];
+    expect(addHandler).toBeTypeOf("function");
+    await addHandler("C:/temp/tv/twin-peaks.json");
+
+    expect(state.readFileMock).not.toHaveBeenCalled();
+    expect(state.searchTvOnTmdbMock).not.toHaveBeenCalled();
+    expect(state.insertDiscoveredSeriesMock).not.toHaveBeenCalled();
+  });
+
+  it("removes TV rows whose manifest file is gone", async () => {
+    const missingMetadata = metadataFilePath("C:/temp/tv/missing.json");
+    state.accessMock.mockImplementation(async (filePath: string) => {
+      const normalized = String(filePath).replace(/\\/g, "/");
+      if (normalized.toLowerCase().endsWith("missing.json")) {
+        throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      }
+    });
+    state.getMediaPathsMock.mockReturnValue({
+      moviesPath: null,
+      tvPath: "C:/temp/tv",
+    });
+    state.listSeriesWithMetadataFileMock.mockReturnValue([
+      { id: 3, metadataFile: missingMetadata },
+    ]);
+
+    const service = await import("../../src/modules/media-watcher/index.js");
+    await service.scanMediaDirectory("system", "tv");
+
+    await vi.waitFor(() => {
+      expect(state.deleteSeriesByMetadataFileMock).toHaveBeenCalledWith(
+        missingMetadata,
+      );
+    });
+    expect(state.deleteMoviesByMetadataFileMock).not.toHaveBeenCalled();
   });
 });

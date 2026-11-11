@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 const getMediaPathsMock = vi.fn();
 const getMoviesPaginatedMock = vi.fn();
+const getSeriesPageMock = vi.fn();
+const getSeriesDetailRecordMock = vi.fn();
 
 vi.mock("../../src/modules/media-paths/mediaPathService.js", () => ({
   getMediaPaths: getMediaPathsMock,
@@ -9,6 +11,12 @@ vi.mock("../../src/modules/media-paths/mediaPathService.js", () => ({
 
 vi.mock("../../src/infra/db/repositories/localMovieRepository.js", () => ({
   getMoviesPaginated: getMoviesPaginatedMock,
+}));
+
+vi.mock("../../src/infra/db/repositories/localSeriesRepository.js", () => ({
+  SERIES_PAGE_SIZE: 20,
+  getSeriesPage: getSeriesPageMock,
+  getSeriesDetailRecord: getSeriesDetailRecordMock,
 }));
 
 describe("browseService", () => {
@@ -124,7 +132,9 @@ describe("browseService", () => {
     expect(result.results[0]?.cast[0]?.name).toBe("Actor One");
   });
 
-  it("returns an empty total for tv series until they are catalogued", async () => {
+  it("returns an empty total when no TV path is configured", async () => {
+    getMediaPathsMock.mockReturnValueOnce({ moviesPath: null, tvPath: null });
+
     const { browseTv } = await import("../../src/modules/browse/browseService.js");
     const result = await browseTv(3);
 
@@ -134,5 +144,149 @@ describe("browseService", () => {
       totalPages: 0,
       totalResults: 0,
     });
+    expect(getSeriesPageMock).not.toHaveBeenCalled();
+  });
+
+  it("maps a series summary and leaves playback to the detail tree", async () => {
+    getMediaPathsMock.mockReturnValueOnce({
+      moviesPath: null,
+      tvPath: "D:/media/tv",
+    });
+    getSeriesPageMock.mockResolvedValueOnce({
+      totalCount: 1,
+      series: [
+        {
+          id: 4,
+          adult: false,
+          homepage: null,
+          imdbId: "tt0098936",
+          originalLanguage: "en",
+          originalTitle: "Twin Peaks",
+          overview: "A town full of secrets.",
+          popularity: 12,
+          posterPath: "/poster.jpg",
+          backdropPath: "/backdrop.jpg",
+          releaseDate: "1990-04-08",
+          year: 1990,
+          runtime: 47,
+          tagline: null,
+          title: "Twin Peaks",
+          voteAverage: 8.4,
+          voteCount: 1000,
+          hasExtras: true,
+          metadataFile: "D:/media/tv/twin-peaks.json",
+          tmdbId: 1920,
+          seasonCount: 2,
+          episodeCount: 11,
+          cast: [],
+          crew: [],
+          genres: [{ id: 3, localSeriesId: 4, genreId: 18, name: "Drama" }],
+          trailer: null,
+        },
+      ],
+    });
+
+    const { browseTv } = await import("../../src/modules/browse/browseService.js");
+    const result = await browseTv(1);
+
+    expect(getSeriesPageMock).toHaveBeenCalledWith("D:/media/tv", 1);
+    expect(result.totalResults).toBe(1);
+    expect(result.results[0]).toMatchObject({
+      id: 4,
+      mediaType: "tv",
+      title: "Twin Peaks",
+      year: 1990,
+      url: "",
+      hasExtras: true,
+      seasonCount: 2,
+      episodeCount: 11,
+      extras: [],
+    });
+    expect(result.results[0]?.genres[0]?.name).toBe("Drama");
+  });
+
+  it("builds the playable tree with stream urls", async () => {
+    getMediaPathsMock.mockReturnValueOnce({
+      moviesPath: null,
+      tvPath: "D:/media/tv",
+    });
+    getSeriesDetailRecordMock.mockResolvedValueOnce({
+      series: {
+        id: 4,
+        adult: false,
+        homepage: null,
+        imdbId: null,
+        originalLanguage: null,
+        originalTitle: null,
+        overview: null,
+        popularity: 0,
+        posterPath: null,
+        backdropPath: null,
+        releaseDate: null,
+        year: 1990,
+        runtime: 0,
+        tagline: null,
+        title: "Twin Peaks",
+        voteAverage: 0,
+        voteCount: 0,
+        hasExtras: true,
+        metadataFile: "D:/media/tv/twin-peaks.json",
+        tmdbId: null,
+        seasonCount: 1,
+        episodeCount: 1,
+        cast: [],
+        crew: [],
+        genres: [],
+      },
+      nodes: [
+        {
+          id: 10,
+          parentId: null,
+          kind: "season",
+          label: "1",
+          title: null,
+          runtime: null,
+          url: null,
+          sortOrder: 0,
+          seasonNumber: 1,
+          episodeNumber: null,
+        },
+        {
+          id: 11,
+          parentId: 10,
+          kind: "episode",
+          label: "1",
+          title: "Pilot",
+          runtime: null,
+          url: null,
+          sortOrder: 0,
+          seasonNumber: 1,
+          episodeNumber: 1,
+        },
+        {
+          id: 12,
+          parentId: 11,
+          kind: "version",
+          label: "Original",
+          title: "Original",
+          runtime: "1:30:09",
+          url: "D:/media/tv/Twin Peaks/s1/original/master.m3u8",
+          sortOrder: 0,
+          seasonNumber: 1,
+          episodeNumber: 1,
+        },
+      ],
+    });
+
+    const { getSeriesDetail } =
+      await import("../../src/modules/browse/browseService.js");
+    const detail = await getSeriesDetail(4);
+
+    expect(detail?.nodes[0]?.label).toBe("1");
+    expect(detail?.nodes[0]?.url).toBeNull();
+    expect(detail?.nodes[0]?.children[0]?.title).toBe("Pilot");
+    expect(detail?.nodes[0]?.children[0]?.children[0]?.url).toBe(
+      "stream/tv/4/nodes/12/master.m3u8",
+    );
   });
 });

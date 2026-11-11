@@ -10,7 +10,9 @@ Copy and adapt these examples:
 - [`big-fish.json`](big-fish.json): a movie with bonus features
 - [`jackie-brown.json`](jackie-brown.json): a movie without bonus features
 - [`northern-exposure.json`](northern-exposure.json): a TV series with one
-  season
+  season of single-file episodes
+- [`twin-peaks.json`](twin-peaks.json): a TV series with alternate episode
+  versions, season extras, and nested series extras
 
 ## Movie metadata
 
@@ -39,13 +41,29 @@ resolves to `C:\Media\Movies\Big Fish\master.m3u8`.
 
 ## TV-series metadata
 
-The `DVD` object identifies the series with `Title` and `Year`. The `Seasons`
-object groups episodes by season number. Each episode has a display name and a
-`File` path relative to the configured TV root.
+The `DVD` object identifies the series with `Title` and `Year`. A series has
+no single feature file. Episodes and extras live under `Seasons`, and every
+`File` path is relative to the configured TV root.
 
-The current service importer handles the movie `DVD`/`Extras` format. Support
-for importing the `Seasons` structure is still being implemented; the TV
-example documents the intended format.
+A season key is the season number. Episodes can be listed in two ways:
+
+- Directly on the season, as in
+  [`northern-exposure.json`](northern-exposure.json). The key is the episode
+  label and the value has a `File`.
+- Inside an `Episodes` object, as in [`twin-peaks.json`](twin-peaks.json).
+  Keys are usually episode numbers. A value with `File` is the only cut of
+  that episode. A value without `File` has more than one version, such as
+  `Original` and `Alternate`, and each version has its own `File` and
+  `Runtime`.
+
+Episodes usually have no `Title`. When `Title` is present, that name is kept.
+Extras usually have a title, either in `Title` or as the object key itself.
+
+`Extras` can sit beside the numbered seasons (the whole series), inside one
+season, or at the top level next to `DVD` and `Seasons`. A value with `File`
+is playable. A value without `File` is a group, and its children can be
+playable items or further groups. `Runtime` is a duration string such as
+`44:31` or `1:30:09`.
 
 ## Placement
 

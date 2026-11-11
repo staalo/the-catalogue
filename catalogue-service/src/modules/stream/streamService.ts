@@ -1,5 +1,6 @@
 import path from "node:path";
 import { getMovieByIdWithExtras } from "../../infra/db/repositories/localMovieRepository.js";
+import { getPlayableSeriesNode } from "../../infra/db/repositories/localSeriesRepository.js";
 import { getMediaPaths } from "../media-paths/mediaPathService.js";
 import {
   isPathUnderDirectory,
@@ -187,4 +188,71 @@ export async function tryGetExtraAssetStream(
   }
 
   return await tryResolveFile(assetPath, moviesPath);
+}
+
+async function getAuthorizedTvPath(): Promise<string | null> {
+  const localMedia = getMediaPaths();
+
+  if (!localMedia?.tvPath) {
+    return null;
+  }
+
+  const exists = await fileExists(localMedia.tvPath);
+  if (!exists) {
+    return null;
+  }
+
+  return path.resolve(localMedia.tvPath);
+}
+
+/**
+ * Stream one playable series node (episode, version, or extra).
+ * The file must sit under the configured TV library.
+ */
+export async function tryGetTvNodeStream(
+  seriesId: number,
+  nodeId: number,
+): Promise<[StreamStatus, StreamFile | null]> {
+  const tvPath = await getAuthorizedTvPath();
+  if (!tvPath) {
+    return [StreamStatus.Forbidden, null];
+  }
+
+  const node = getPlayableSeriesNode(seriesId, nodeId);
+  if (!node || !isPathUnderDirectory(node.metadataFile, tvPath)) {
+    return [StreamStatus.NotFound, null];
+  }
+
+  return await tryResolveFile(node.url, tvPath);
+}
+
+/**
+ * Stream an HLS asset that belongs next to a playable series node.
+ */
+export async function tryGetTvNodeAssetStream(
+  seriesId: number,
+  nodeId: number,
+  relativePath: string,
+): Promise<[StreamStatus, StreamFile | null]> {
+  const tvPath = await getAuthorizedTvPath();
+  if (!tvPath) {
+    return [StreamStatus.Forbidden, null];
+  }
+
+  const node = getPlayableSeriesNode(seriesId, nodeId);
+  if (!node || !isPathUnderDirectory(node.metadataFile, tvPath)) {
+    return [StreamStatus.NotFound, null];
+  }
+
+  const mediaDirectory = path.dirname(node.url);
+  if (!mediaDirectory) {
+    return [StreamStatus.NotFound, null];
+  }
+
+  const assetPath = tryResolveAssetPath(mediaDirectory, relativePath, tvPath);
+  if (!assetPath) {
+    return [StreamStatus.Forbidden, null];
+  }
+
+  return await tryResolveFile(assetPath, tvPath);
 }
