@@ -131,6 +131,22 @@ export async function installAccountApi(page: Page): Promise<AccountApi> {
     });
   });
 
+  await page.route("**/api/playback/tv**", (route) => {
+    if (route.request().method() === "GET") {
+      return fulfill(route, 200, { items: [] });
+    }
+
+    return fulfill(route, 200, {
+      nodeId: 1,
+      seriesId: 1,
+      progress: 0,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+  });
+
+  // Playlist paths from the catalogue are same-origin /api/stream URLs. Stop them
+  // here so the dev server does not proxy them to a catalogue service that is not running.
+  await page.route("**/api/stream/**", (route) => route.abort());
   await page.route("https://example.test/**", (route) => route.abort());
 
   return api;

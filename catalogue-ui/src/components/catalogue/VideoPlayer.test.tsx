@@ -6,8 +6,10 @@ import { createAppTheme } from "@/lib/theme";
 import { useWatchProgressStore } from "@/stores/useWatchProgressStore";
 import { VideoPlayer } from "./VideoPlayer";
 
-const { queueMoviePlaybackProgressUpdate, hlsControl } = vi.hoisted(() => ({
+const { queueMoviePlaybackProgressUpdate, queueTvPlaybackProgressUpdate, hlsControl } =
+  vi.hoisted(() => ({
   queueMoviePlaybackProgressUpdate: vi.fn(() => Promise.resolve()),
+  queueTvPlaybackProgressUpdate: vi.fn(() => Promise.resolve()),
   hlsControl: {
     tracks: [] as { name: string }[],
     instances: [] as { audioTrack: number }[],
@@ -16,6 +18,7 @@ const { queueMoviePlaybackProgressUpdate, hlsControl } = vi.hoisted(() => ({
 
 vi.mock("@/api/playback", () => ({
   queueMoviePlaybackProgressUpdate,
+  queueTvPlaybackProgressUpdate,
 }));
 
 vi.mock("hls.js", () => {
@@ -87,7 +90,14 @@ beforeEach(() => {
   hlsControl.tracks = [];
   hlsControl.instances = [];
   queueMoviePlaybackProgressUpdate.mockClear();
-  useWatchProgressStore.setState({ progressById: {}, hydratedFor: null });
+  queueTvPlaybackProgressUpdate.mockClear();
+  useWatchProgressStore.setState({
+    progressById: {},
+    tvProgressByNodeId: {},
+    tvProgressEntries: [],
+    hydratedFor: null,
+    tvHydratedFor: null,
+  });
 });
 
 test("renders a video for a file url", async () => {
@@ -153,6 +163,102 @@ test("reports progress while watching", async () => {
 
   await expect.poll(() => useWatchProgressStore.getState().progressById[7]).toBe(25);
   expect(queueMoviePlaybackProgressUpdate).toHaveBeenCalledWith("ada", 7, 25);
+});
+
+test("resumes and reports progress for a TV episode", async () => {
+  useWatchProgressStore.setState({
+    tvProgressByNodeId: { 12: 40 },
+    hydratedFor: "ada",
+  });
+  const screen = await render(
+    <VideoPlayer
+      src="/episode.mp4"
+      mediaId={12}
+      seriesId={4}
+      playbackUser="ada"
+      playbackKind="tv"
+    />,
+    { wrapper: ThemeWrapper },
+  );
+
+  const video = videoElement(screen);
+  const currentTime = stubTimeline(video, 100);
+  video.dispatchEvent(new Event("loadedmetadata"));
+  await expect.poll(currentTime).toBe(40);
+
+  stubTimeline(video, 100, 50);
+  video.dispatchEvent(new Event("timeupdate"));
+
+  await expect.poll(() => useWatchProgressStore.getState().tvProgressByNodeId[12]).toBe(50);
+  expect(useWatchProgressStore.getState().tvProgressEntries).toEqual([
+    { nodeId: 12, seriesId: 4, progress: 50 },
+  ]);
+  expect(queueTvPlaybackProgressUpdate).toHaveBeenCalledWith("ada", 12, 50, 4);
+  expect(queueMoviePlaybackProgressUpdate).not.toHaveBeenCalled();
+  expect(useWatchProgressStore.getState().progressById).toEqual({});
+});
+
+test("saves the episode and asks for the next one when playback ends", async () => {
+  const onEnded = vi.fn();
+  const screen = await render(
+    <VideoPlayer
+      src="/episode.mp4"
+      mediaId={12}
+      seriesId={4}
+      playbackUser="ada"
+      playbackKind="tv"
+      onEnded={onEnded}
+    />,
+    { wrapper: ThemeWrapper },
+  );
+
+  stubTimeline(videoElement(screen), 100, 100);
+  videoElement(screen).dispatchEvent(new Event("ended"));
+
+  expect(onEnded).toHaveBeenCalledOnce();
+  await expect.poll(() => useWatchProgressStore.getState().tvProgressByNodeId[12]).toBe(100);
+  expect(queueTvPlaybackProgressUpdate).toHaveBeenCalledWith("ada", 12, 100, 4);
+});
+
+test("does not queue TV progress without a series id", async () => {
+  const screen = await render(
+    <VideoPlayer
+      src="/episode.mp4"
+      mediaId={12}
+      playbackUser="ada"
+      playbackKind="tv"
+    />,
+    { wrapper: ThemeWrapper },
+  );
+
+  stubTimeline(videoElement(screen), 100, 50);
+  videoElement(screen).dispatchEvent(new Event("timeupdate"));
+
+  await expect.poll(() => useWatchProgressStore.getState().tvProgressByNodeId[12]).toBe(50);
+  expect(queueTvPlaybackProgressUpdate).not.toHaveBeenCalled();
+});
+
+test("queues TV progress with the series id already stored for the episode", async () => {
+  useWatchProgressStore.setState({
+    tvProgressByNodeId: { 12: 10 },
+    tvProgressEntries: [{ nodeId: 12, seriesId: 4, progress: 10 }],
+    hydratedFor: "ada",
+  });
+  const screen = await render(
+    <VideoPlayer
+      src="/episode.mp4"
+      mediaId={12}
+      playbackUser="ada"
+      playbackKind="tv"
+    />,
+    { wrapper: ThemeWrapper },
+  );
+
+  stubTimeline(videoElement(screen), 100, 50);
+  videoElement(screen).dispatchEvent(new Event("timeupdate"));
+
+  await expect.poll(() => useWatchProgressStore.getState().tvProgressByNodeId[12]).toBe(50);
+  expect(queueTvPlaybackProgressUpdate).toHaveBeenCalledWith("ada", 12, 50, 4);
 });
 
 test("does not report progress without a playback user", async () => {

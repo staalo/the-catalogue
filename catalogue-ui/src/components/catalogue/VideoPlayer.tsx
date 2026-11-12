@@ -5,13 +5,20 @@ import MenuItem from '@mui/material/MenuItem';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import Typography from '@mui/material/Typography';
 import Hls from 'hls.js';
-import { queueMoviePlaybackProgressUpdate } from '@/api/playback';
+import {
+  queueMoviePlaybackProgressUpdate,
+  queueTvPlaybackProgressUpdate,
+} from '@/api/playback';
 import { useWatchProgressStore } from '@/stores/useWatchProgressStore';
 
 type VideoPlayerProps = {
   src: string;
   mediaId?: number;
   playbackUser?: string;
+  playbackKind?: 'movie' | 'tv';
+  seriesId?: number;
+  /** Called after the file plays through to the end. */
+  onEnded?: () => void;
 };
 
 type TrackOption = {
@@ -38,6 +45,22 @@ function playbackPercent(video: HTMLVideoElement): number | null {
   }
 
   return (video.currentTime / video.duration) * 100;
+}
+
+function positiveSeriesId(value: number | undefined): number | undefined {
+  return value != null && Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
+function seriesIdForPlayback(nodeId: number, seriesId: number | undefined): number | undefined {
+  const provided = positiveSeriesId(seriesId);
+  if (provided !== undefined) {
+    return provided;
+  }
+
+  const stored = useWatchProgressStore
+    .getState()
+    .tvProgressEntries.find((entry) => entry.nodeId === nodeId)?.seriesId;
+  return positiveSeriesId(stored);
 }
 
 function getTrackLabel(
@@ -229,11 +252,21 @@ function AudioTrackOverlay({
   );
 }
 
-export function VideoPlayer({ src, mediaId, playbackUser }: VideoPlayerProps) {
+export function VideoPlayer({
+  src,
+  mediaId,
+  playbackUser,
+  playbackKind = 'movie',
+  seriesId,
+  onEnded,
+}: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastQueuedProgressRef = useRef<number | undefined>(undefined);
+  const onEndedRef = useRef(onEnded);
   const [hlsEngine, setHlsEngine] = useState<Hls | null>(null);
-  const setProgress = useWatchProgressStore((state) => state.setProgress);
+  onEndedRef.current = onEnded;
+  const setMovieProgress = useWatchProgressStore((state) => state.setProgress);
+  const setTvProgress = useWatchProgressStore((state) => state.setTvProgress);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -267,7 +300,11 @@ export function VideoPlayer({ src, mediaId, playbackUser }: VideoPlayerProps) {
 
       const percent = playbackPercent(video);
       if (percent !== null) {
-        setProgress(mediaId, percent);
+        if (playbackKind === 'tv') {
+          setTvProgress(mediaId, percent, seriesId);
+        } else {
+          setMovieProgress(mediaId, percent);
+        }
 
         const rounded = Math.min(100, Math.max(0, Math.round(percent)));
         const lastQueued = lastQueuedProgressRef.current;
@@ -284,25 +321,52 @@ export function VideoPlayer({ src, mediaId, playbackUser }: VideoPlayerProps) {
           return;
         }
 
-        lastQueuedProgressRef.current = rounded;
-        void queueMoviePlaybackProgressUpdate(playbackUser, mediaId, rounded)
-          .catch(() => {
+        if (playbackKind === 'tv') {
+          const queuedSeriesId = seriesIdForPlayback(mediaId, seriesId);
+          if (queuedSeriesId === undefined) {
+            return;
+          }
+
+          lastQueuedProgressRef.current = rounded;
+          void queueTvPlaybackProgressUpdate(
+            playbackUser,
+            mediaId,
+            rounded,
+            queuedSeriesId,
+          ).catch(() => {
             if (lastQueuedProgressRef.current === rounded) {
               lastQueuedProgressRef.current = undefined;
             }
           });
+          return;
+        }
+
+        lastQueuedProgressRef.current = rounded;
+        void queueMoviePlaybackProgressUpdate(playbackUser, mediaId, rounded).catch(() => {
+          if (lastQueuedProgressRef.current === rounded) {
+            lastQueuedProgressRef.current = undefined;
+          }
+        });
       }
     };
 
     const saveProgress = () => recordProgress(false);
     const flushProgress = () => recordProgress(true);
+    const handleEnded = () => {
+      flushProgress();
+      onEndedRef.current?.();
+    };
 
     const resumeProgress = () => {
       if (!mediaId || !Number.isFinite(video.duration) || video.duration <= 0) {
         return;
       }
 
-      const saved = useWatchProgressStore.getState().progressById[mediaId];
+      const progressById =
+        playbackKind === 'tv'
+          ? useWatchProgressStore.getState().tvProgressByNodeId
+          : useWatchProgressStore.getState().progressById;
+      const saved = progressById[mediaId];
       lastQueuedProgressRef.current = saved;
       if (saved && saved > 2 && saved < 95) {
         video.currentTime = (saved / 100) * video.duration;
@@ -312,6 +376,7 @@ export function VideoPlayer({ src, mediaId, playbackUser }: VideoPlayerProps) {
     video.addEventListener('loadedmetadata', resumeProgress);
     video.addEventListener('timeupdate', saveProgress);
     video.addEventListener('pause', flushProgress);
+    video.addEventListener('ended', handleEnded);
     window.addEventListener('pagehide', flushProgress);
 
     return () => {
@@ -319,13 +384,14 @@ export function VideoPlayer({ src, mediaId, playbackUser }: VideoPlayerProps) {
       video.removeEventListener('loadedmetadata', resumeProgress);
       video.removeEventListener('timeupdate', saveProgress);
       video.removeEventListener('pause', flushProgress);
+      video.removeEventListener('ended', handleEnded);
       window.removeEventListener('pagehide', flushProgress);
       setHlsEngine(null);
       hls?.destroy();
       video.removeAttribute('src');
       video.load();
     };
-  }, [src, mediaId, playbackUser, setProgress]);
+  }, [src, mediaId, playbackUser, playbackKind, seriesId, setMovieProgress, setTvProgress]);
 
   return (
     <Box sx={{ position: 'relative', width: '100%' }}>

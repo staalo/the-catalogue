@@ -6,26 +6,36 @@ import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import type { Extra, Media } from '@/types';
+import { SeriesDetails } from '@/components/catalogue/SeriesDetails';
+import type { SeriesPlayback } from '@/lib/seriesListing';
+import type { Extra, Media, TvContentNode } from '@/types';
 
 type MediaDetailsDialogProps = {
   item: Media | null;
+  seriesStatus?: 'loading' | 'error' | 'ready';
+  seriesNodes?: TvContentNode[];
   onClose: () => void;
   onPlay: (item: Media) => void;
   onPlayExtra: (item: Media, extra: Extra) => void;
+  onPlaySeries?: (playback: SeriesPlayback) => void;
 };
 
 export function MediaDetailsDialog({
   item,
+  seriesStatus = 'loading',
+  seriesNodes = [],
   onClose,
   onPlay,
   onPlayExtra,
+  onPlaySeries,
 }: MediaDetailsDialogProps) {
+  const isSeries = item?.type === 'tv';
+
   return (
     <Dialog
       open={Boolean(item)}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth={isSeries ? 'md' : 'sm'}
       fullWidth
       slotProps={{
         paper: {
@@ -36,6 +46,7 @@ export function MediaDetailsDialog({
       <Box
         sx={{
           height: 250,
+          flexShrink: 0,
           backgroundImage: item
             ? `linear-gradient(0deg, #17191e, transparent), url(${item.backdrop || item.image})`
             : undefined,
@@ -61,49 +72,61 @@ export function MediaDetailsDialog({
           <Typography color="rgba(255,255,255,.75)" lineHeight={1.6}>
             {item?.description}
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<PlayArrow />}
-            sx={{ alignSelf: 'flex-start', mt: 1 }}
-            onClick={() => {
-              if (item) {
-                onPlay(item);
-              }
-            }}
-          >
-            Play now
-          </Button>
-          {item?.extras?.length ? (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-                Extras
-              </Typography>
-              <Stack spacing={1}>
-                {item.extras.map((extra) => (
-                  <Button
-                    key={extra.id}
-                    variant="outlined"
-                    color="inherit"
-                    startIcon={<PlayArrow />}
-                    onClick={() => onPlayExtra(item, extra)}
-                    sx={{
-                      justifyContent: 'flex-start',
-                      borderColor: 'rgba(255,255,255,.18)',
-                      color: 'white',
-                      textTransform: 'none',
-                    }}
-                  >
-                    <Box component="span" sx={{ flex: 1, textAlign: 'left' }}>
-                      {extra.title}
-                    </Box>
-                    <Typography component="span" variant="caption" color="text.secondary">
-                      {extra.runtime}
-                    </Typography>
-                  </Button>
-                ))}
-              </Stack>
-            </Box>
-          ) : null}
+          {isSeries && item ? (
+            <SeriesDetails
+              seriesId={item.id}
+              seriesTitle={item.title}
+              status={seriesStatus}
+              nodes={seriesNodes}
+              onPlay={(playback) => onPlaySeries?.(playback)}
+            />
+          ) : (
+            <>
+              <Button
+                variant="contained"
+                startIcon={<PlayArrow />}
+                sx={{ alignSelf: 'flex-start', mt: 1 }}
+                onClick={() => {
+                  if (item) {
+                    onPlay(item);
+                  }
+                }}
+              >
+                Play now
+              </Button>
+              {item?.extras?.length ? (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                    Extras
+                  </Typography>
+                  <Stack spacing={1}>
+                    {item.extras.map((extra) => (
+                      <Button
+                        key={extra.id}
+                        variant="outlined"
+                        color="inherit"
+                        startIcon={<PlayArrow />}
+                        onClick={() => onPlayExtra(item, extra)}
+                        sx={{
+                          justifyContent: 'flex-start',
+                          borderColor: 'rgba(255,255,255,.18)',
+                          color: 'white',
+                          textTransform: 'none',
+                        }}
+                      >
+                        <Box component="span" sx={{ flex: 1, textAlign: 'left' }}>
+                          {extra.title}
+                        </Box>
+                        <Typography component="span" variant="caption" color="text.secondary">
+                          {extra.runtime}
+                        </Typography>
+                      </Button>
+                    ))}
+                  </Stack>
+                </Box>
+              ) : null}
+            </>
+          )}
         </Stack>
       </DialogContent>
     </Dialog>

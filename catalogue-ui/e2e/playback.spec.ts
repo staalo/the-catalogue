@@ -220,6 +220,79 @@ test("lists in-progress titles and leaves out finished ones", async ({ page }) =
   await expect(rail(page, "All movies (2)").getByRole("button", { name: /Arrival/ })).toBeVisible();
 });
 
+const northernExposure = {
+  ...movie({ id: 10, title: "Northern Exposure" }),
+  year: 1990,
+  seasonCount: 6,
+  episodeCount: 110,
+};
+const twinPeaks = {
+  ...movie({ id: 11, title: "Twin Peaks" }),
+  year: 1990,
+  seasonCount: 2,
+  episodeCount: 3,
+};
+const theLeftovers = {
+  ...movie({ id: 12, title: "The Leftovers" }),
+  year: 2014,
+  seasonCount: 3,
+  episodeCount: 28,
+};
+
+async function stubSeries(page: Page, results: ReturnType<typeof movie>[]) {
+  await page.route("**/api/browse/browsetv**", (route) =>
+    fulfill(route, 200, {
+      page: 1,
+      results,
+      totalPages: 1,
+      totalResults: results.length,
+    }),
+  );
+}
+
+async function stubTvProgress(
+  page: Page,
+  items: { nodeId: number; seriesId: number; progress: number }[],
+) {
+  await page.route("**/api/playback/tv**", (route) => {
+    if (route.request().method() !== "GET") {
+      return fulfill(route, 200, {
+        nodeId: 1,
+        seriesId: 1,
+        progress: 0,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      });
+    }
+
+    return fulfill(route, 200, {
+      items: items.map((item) => ({
+        ...item,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      })),
+    });
+  });
+}
+
+test("keeps a started series until every episode is finished", async ({ page }) => {
+  await stubSeries(page, [northernExposure, twinPeaks, theLeftovers]);
+  await stubTvProgress(page, [
+    { nodeId: 1, seriesId: northernExposure.id, progress: 40 },
+    { nodeId: 2, seriesId: twinPeaks.id, progress: 100 },
+    { nodeId: 3, seriesId: twinPeaks.id, progress: 100 },
+    { nodeId: 4, seriesId: twinPeaks.id, progress: 100 },
+    { nodeId: 5, seriesId: theLeftovers.id, progress: 100 },
+  ]);
+  await enterLibrary(page);
+  await page.getByRole("tab", { name: "TV series" }).click();
+
+  const continueWatching = rail(page, "Continue watching");
+  await expect(continueWatching.getByRole("button", { name: /Northern Exposure/ })).toBeVisible();
+  await expect(continueWatching.getByRole("button", { name: /The Leftovers/ })).toBeVisible();
+  await expect(continueWatching.getByRole("button", { name: /Twin Peaks/ })).toHaveCount(0);
+  await expect(rail(page, "All series (3)").getByRole("button", { name: /Twin Peaks/ })).toBeVisible();
+  await expect(rail(page, "All series (3)").getByRole("button", { name: /Northern Exposure/ })).toBeVisible();
+});
+
 test("shows a warning when playback progress cannot be synchronized", async ({ page }) => {
   await stubMovies(page, [dune]);
   await stubProgress(page, { error: "Progress sync failed." });

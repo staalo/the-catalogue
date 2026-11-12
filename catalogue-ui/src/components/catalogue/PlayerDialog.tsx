@@ -11,9 +11,10 @@ import type { PlayerTarget } from '@/types';
 type PlayerDialogProps = {
   target: PlayerTarget | null;
   onClose: () => void;
+  onEnded?: () => void;
 };
 
-export function PlayerDialog({ target, onClose }: PlayerDialogProps) {
+export function PlayerDialog({ target, onClose, onEnded }: PlayerDialogProps) {
   return (
     <Dialog
       open={Boolean(target)}
@@ -30,10 +31,13 @@ export function PlayerDialog({ target, onClose }: PlayerDialogProps) {
         <Stack spacing={1.5}>
           {target?.url ? (
             <VideoPlayer
-              key={target.url}
+              key={`${target.mediaId ?? ''}:${target.url}`}
               src={target.url}
               mediaId={target.mediaId}
+              seriesId={target.seriesId}
               playbackUser={target.playbackUser}
+              playbackKind={target.playbackKind}
+              onEnded={onEnded}
             />
           ) : null}
           <Stack direction="row" alignItems="center" justifyContent="space-between">

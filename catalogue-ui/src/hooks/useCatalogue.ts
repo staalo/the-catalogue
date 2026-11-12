@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { browseMovies, browseTv, searchMovies } from '@/api/catalogue';
+import { browseMovies, browseTv, searchMovies, searchTv } from '@/api/catalogue';
+import {
+  continueProgressBySeries,
+  seriesIdsToContinue,
+  type SeriesProgressEntry,
+} from '@/lib/continueWatching';
 import { useWatchProgressStore } from '@/stores/useWatchProgressStore';
 import type { Media, MediaType } from '@/types';
 
@@ -20,7 +25,7 @@ function pickDifferentIndex(length: number, current: number): number {
 }
 
 function useRotatingFeatured(items: Media[]): Media | null {
-  const listKey = items.map((item) => item.id).join('\0');
+  const listKey = items.map((item) => `${item.type}:${item.id}`).join('\0');
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -52,6 +57,31 @@ function withLocalProgress(
   });
 }
 
+function withSeriesProgress(items: Media[], entries: SeriesProgressEntry[]): Media[] {
+  const episodeCountBySeries = new Map(
+    items.map((item) => [item.id, item.episodeCount ?? 0]),
+  );
+  const progressBySeries = continueProgressBySeries(entries);
+  const continueIds = seriesIdsToContinue(entries, episodeCountBySeries);
+  if (progressBySeries.size === 0 && continueIds.size === 0) {
+    return items;
+  }
+
+  return items.map((item) => {
+    const progress = progressBySeries.get(item.id);
+    const continueSeries = continueIds.has(item.id);
+    if (progress === undefined && !continueSeries) {
+      return item;
+    }
+
+    return {
+      ...item,
+      ...(progress === undefined ? {} : { progress }),
+      ...(continueSeries ? { continueSeries: true } : {}),
+    };
+  });
+}
+
 export function useCatalogue(
   type: MediaType,
   search: string,
@@ -60,8 +90,8 @@ export function useCatalogue(
   const trimmedSearch = search.trim();
   const isSearching = trimmedSearch.length > 0;
   const canFetch = Boolean(userName);
-  const canFetchMovies = canFetch && type === 'movie';
   const progressById = useWatchProgressStore((state) => state.progressById);
+  const tvProgressEntries = useWatchProgressStore((state) => state.tvProgressEntries);
 
   const browseQuery = useQuery({
     queryKey: ['catalogue', 'browse', userName, type],
@@ -71,33 +101,23 @@ export function useCatalogue(
 
   const searchQuery = useQuery({
     queryKey: ['catalogue', 'search', userName, type, trimmedSearch],
-    queryFn: () => searchMovies(trimmedSearch),
-    enabled: canFetchMovies && isSearching,
+    queryFn: () => (type === 'tv' ? searchTv(trimmedSearch) : searchMovies(trimmedSearch)),
+    enabled: canFetch && isSearching,
   });
 
-  const catalogue =
-    type === 'tv' || !isSearching ? browseQuery.data : searchQuery.data;
-  const data = withLocalProgress(catalogue?.items ?? [], progressById);
-  const featured = useRotatingFeatured(type === 'tv' ? [] : data);
-  const totalResults = catalogue?.totalResults ?? 0;
-
-  if (type === 'tv') {
-    return {
-      data,
-      totalResults,
-      featured: null,
-      isLoading: browseQuery.isLoading,
-      isError: browseQuery.isError,
-      error: browseQuery.error,
-    };
-  }
+  const activeQuery = isSearching ? searchQuery : browseQuery;
+  const items = activeQuery.data?.items ?? [];
+  const data = type === 'movie'
+    ? withLocalProgress(items, progressById)
+    : withSeriesProgress(items, tvProgressEntries);
+  const featured = useRotatingFeatured(data);
 
   return {
     data,
-    totalResults,
+    totalResults: activeQuery.data?.totalResults ?? 0,
     featured,
-    isLoading: isSearching ? searchQuery.isLoading : browseQuery.isLoading,
-    isError: isSearching ? searchQuery.isError : browseQuery.isError,
-    error: isSearching ? searchQuery.error : browseQuery.error,
+    isLoading: activeQuery.isLoading,
+    isError: activeQuery.isError,
+    error: activeQuery.error,
   };
 }
