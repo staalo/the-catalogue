@@ -19,26 +19,12 @@ import { useLogout } from '@/hooks/useAuth';
 import { useCatalogue } from '@/hooks/useCatalogue';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { usePlaybackProgress } from '@/hooks/usePlaybackProgress';
+import { useSeriesDetail } from '@/hooks/useSeriesDetail';
 import { waitForPlaybackProgressUpdates } from '@/api/playback';
+import { isContinueWatching } from '@/lib/continueWatching';
+import { genreRailsFor } from '@/lib/genreRails';
+import { nextEpisodePlayback } from '@/lib/seriesListing';
 import type { Extra, Media, MediaType, PlayerTarget } from '@/types';
-
-const MOVIE_GENRE_RAILS = [
-  'Action',
-  'Adventure',
-  'Crime',
-  'Drama',
-  'Fantasy',
-  'Horror',
-  'Science Fiction',
-  'Thriller',
-] as const;
-
-function moviesInGenre(items: Media[], genre: string): Media[] {
-  const target = genre.toLowerCase();
-  return items.filter((item) =>
-    item.genres.some((entry) => entry.name.toLowerCase() === target),
-  );
-}
 
 export function HomePage() {
   const [tab, setTab] = useState<MediaType>('movie');
@@ -67,25 +53,31 @@ export function HomePage() {
     search,
     user?.userName,
   );
+  const detailSeriesId =
+    selected?.type === 'tv' ? selected.id : player?.seriesId ?? null;
+  const seriesDetail = useSeriesDetail(detailSeriesId, user?.userName);
   const catalogueLoading = isLoading || !playbackProgress.isHydrated;
+  const seriesReady =
+    selected?.type === 'tv' && seriesDetail.data?.id === selected.id
+      ? seriesDetail.data
+      : null;
 
   const continueWatching = useMemo(
-    () => data.filter((item) => item.progress && item.progress < 95),
+    () =>
+      data.filter((item) =>
+        item.type === 'tv' ? Boolean(item.continueSeries) : isContinueWatching(item.progress),
+      ),
     [data],
   );
 
-  const genreRails = useMemo(
-    () =>
-      tab === 'movie'
-        ? MOVIE_GENRE_RAILS.map((genre) => ({
-            genre,
-            items: moviesInGenre(data, genre),
-          })).filter((rail) => rail.items.length > 0)
-        : [],
-    [data, tab],
-  );
+  const genreRails = useMemo(() => genreRailsFor(data), [data]);
 
   const playMedia = (item: Media) => {
+    if (item.type === 'tv') {
+      setSelected(item);
+      return;
+    }
+
     setSelected(null);
     if (!item.url) {
       return;
@@ -197,7 +189,7 @@ export function HomePage() {
             ))}
             {tab === 'tv' && data.length === 0 ? (
               <Typography color="text.secondary">
-                TV series are not available from the catalogue service yet.
+                No TV series found in your library.
               </Typography>
             ) : null}
             {tab === 'movie' && data.length === 0 ? (
@@ -232,11 +224,71 @@ export function HomePage() {
       />
       <MediaDetailsDialog
         item={selected}
+        seriesStatus={
+          selected?.type !== 'tv'
+            ? undefined
+            : seriesDetail.isError
+              ? 'error'
+              : seriesReady
+                ? 'ready'
+                : 'loading'
+        }
+        seriesNodes={seriesReady?.nodes}
         onClose={() => setSelected(null)}
         onPlay={playMedia}
         onPlayExtra={playExtra}
+        onPlaySeries={(playback) => {
+          setSelected(null);
+          setPlayer({
+            title: playback.title,
+            subtitle: playback.subtitle,
+            url: playback.url,
+            mediaId: playback.nodeId,
+            seriesId: playback.seriesId,
+            playbackUser: user?.userName,
+            playbackKind: 'tv',
+          });
+        }}
       />
-      <PlayerDialog target={player} onClose={() => setPlayer(null)} />
+      <PlayerDialog
+        target={player}
+        onClose={() => setPlayer(null)}
+        onEnded={() => {
+          if (
+            !player
+            || player.playbackKind !== 'tv'
+            || player.mediaId == null
+            || player.seriesId == null
+          ) {
+            return;
+          }
+
+          const detail = seriesDetail.data;
+          if (!detail || detail.id !== player.seriesId) {
+            return;
+          }
+
+          const next = nextEpisodePlayback(
+            detail.title ?? '',
+            detail.nodes,
+            detail.id,
+            player.mediaId,
+          );
+          if (!next) {
+            return;
+          }
+
+          setPlayer({
+            title: next.title,
+            subtitle: next.subtitle,
+            url: next.url,
+            mediaId: next.nodeId,
+            seriesId: next.seriesId,
+            playbackUser: player.playbackUser,
+            playbackKind: 'tv',
+          });
+        }}
+      />
     </Box>
   );
 }

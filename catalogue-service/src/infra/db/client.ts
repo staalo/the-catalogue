@@ -1,8 +1,11 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
+import { ensureSqliteParentDirectory } from "./ensureSqliteDirectory.js";
 import * as schema from "./schema.js";
 
 const DB_URL = process.env["DATABASE_URL"] ?? "./data/catalog.db";
+
+ensureSqliteParentDirectory(DB_URL);
 
 const sqlite = new Database(DB_URL);
 

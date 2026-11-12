@@ -1,9 +1,12 @@
-import type { Extra, Media, MovieResponse, NamedGenre } from '@/types';
+import type { Extra, Media, MovieResponse, NamedGenre, SeriesSummary } from '@/types';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
-function tmdbImageUrl(path: string | null, size: 'w500' | 'w1280'): string {
+export function catalogImage(
+  path: string | null | undefined,
+  size: 'w300' | 'w500' | 'w1280',
+): string {
   if (!path) {
     return '';
   }
@@ -13,6 +16,21 @@ function tmdbImageUrl(path: string | null, size: 'w500' | 'w1280'): string {
   }
 
   return `${TMDB_IMAGE_BASE}/${size}${path}`;
+}
+
+function countLabel(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+export function formatSeriesMeta(seasonCount?: number, episodeCount?: number): string {
+  const parts: string[] = [];
+  if (seasonCount && seasonCount > 0) {
+    parts.push(countLabel(seasonCount, 'season', 'seasons'));
+  }
+  if (episodeCount && episodeCount > 0) {
+    parts.push(countLabel(episodeCount, 'episode', 'episodes'));
+  }
+  return parts.join('  ·  ');
 }
 
 export function formatRuntime(minutes: number): string {
@@ -71,13 +89,31 @@ export function mapMovieToMedia(movie: MovieResponse): Media {
     type: 'movie',
     year: yearFromReleaseDate(movie.releaseDate),
     meta: formatRuntime(movie.runtime),
-    image: tmdbImageUrl(movie.posterPath, 'w500'),
-    backdrop: tmdbImageUrl(movie.backdropPath, 'w1280'),
+    image: catalogImage(movie.posterPath, 'w500'),
+    backdrop: catalogImage(movie.backdropPath, 'w1280'),
     description: movie.overview ?? '',
     url: toStreamUrl(movie.url),
     extras,
     genres: movie.genres.filter((genre): genre is NamedGenre => Boolean(genre.name)),
     tagline: movie.tagline ?? undefined,
     progress: movie.progress,
+  };
+}
+
+export function mapSeriesToMedia(series: SeriesSummary): Media {
+  return {
+    id: series.id,
+    title: series.title ?? series.originalTitle ?? 'Untitled',
+    type: 'tv',
+    year: series.year ? String(series.year) : yearFromReleaseDate(series.releaseDate),
+    meta: formatSeriesMeta(series.seasonCount, series.episodeCount),
+    image: catalogImage(series.posterPath, 'w500'),
+    backdrop: catalogImage(series.backdropPath, 'w1280'),
+    description: series.overview ?? '',
+    url: '',
+    extras: [],
+    genres: (series.genres ?? []).filter((genre): genre is NamedGenre => Boolean(genre.name)),
+    tagline: series.tagline ?? undefined,
+    episodeCount: series.episodeCount,
   };
 }

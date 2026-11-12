@@ -94,6 +94,10 @@ export type Media = {
   image: string;
   backdrop: string;
   progress?: number;
+  /** Catalogue episode total. Used to keep a started series in Continue watching. */
+  episodeCount?: number;
+  /** Started series that still has an episode left to watch. */
+  continueSeries?: boolean;
   description: string;
   url?: string;
   extras?: Extra[];
@@ -124,10 +128,69 @@ export type RegisterResponse = {
   userName: string;
 };
 
+export type TvNodeKind =
+  | 'season'
+  | 'episode'
+  | 'version'
+  | 'extras'
+  | 'group'
+  | 'media';
+
+export type TvContentNode = {
+  id: number;
+  kind: TvNodeKind;
+  label: string;
+  title: string | null;
+  runtime: string | null;
+  /** Episode overview lives on the episode. Versions repeat it in the UI. */
+  overview: string | null;
+  stillPath: string | null;
+  url: string | null;
+  seasonNumber: number | null;
+  episodeNumber: number | null;
+  children: TvContentNode[];
+};
+
+export type SeriesSummary = {
+  id: number;
+  title: string | null;
+  originalTitle: string | null;
+  overview: string | null;
+  posterPath: string | null;
+  backdropPath: string | null;
+  releaseDate: string | null;
+  year: number | null;
+  tagline: string | null;
+  seasonCount: number;
+  episodeCount: number;
+  genres: Genre[];
+};
+
+export type SeriesDetail = SeriesSummary & {
+  nodes: TvContentNode[];
+};
+
+export type TvBrowseResult = {
+  page: number;
+  results: SeriesSummary[];
+  totalPages: number;
+  totalResults: number;
+};
+
+export type TvSearchResult = {
+  query: string;
+  totalResults: number;
+  results: SeriesSummary[];
+};
+
 export type PlayerTarget = {
   title: string;
   subtitle: string;
   url: string;
   mediaId?: number;
+  /** Series that owns a TV episode, version, or extra. */
+  seriesId?: number;
   playbackUser?: string;
+  /** Episode, version, and extra progress is stored separately from movies. */
+  playbackKind?: 'movie' | 'tv';
 };

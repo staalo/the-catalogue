@@ -58,6 +58,154 @@ const expanse = movie({
   title: "The Expanse",
   overview: "A missing person pulls the solar system toward war.",
 });
+const northernExposure = movie({
+  id: 12,
+  title: "Northern Exposure",
+  genres: [
+    { id: 35, name: "Comedy" },
+    { id: 18, name: "Drama" },
+    { id: 10765, name: "Sci-Fi & Fantasy" },
+  ],
+  overview: "A New York doctor practices in Alaska.",
+});
+const twinPeaksCard = {
+  ...movie({
+    id: 11,
+    title: "Twin Peaks",
+    overview: "A town full of secrets.",
+  }),
+  year: 1990,
+  seasonCount: 2,
+  episodeCount: 3,
+};
+
+function tvNode(node: Record<string, unknown>) {
+  return {
+    title: null,
+    runtime: null,
+    overview: null,
+    stillPath: null,
+    url: null,
+    seasonNumber: null,
+    episodeNumber: null,
+    children: [],
+    ...node,
+  };
+}
+
+const twinPeaksDetail = {
+  ...twinPeaksCard,
+  nodes: [
+    tvNode({
+      id: 1,
+      kind: "season",
+      label: "1",
+      seasonNumber: 1,
+      children: [
+        tvNode({
+          id: 2,
+          kind: "episode",
+          label: "1",
+          title: "Pilot",
+          overview: "The body is found.",
+          stillPath: "/pilot.jpg",
+          seasonNumber: 1,
+          episodeNumber: 1,
+          children: [
+            tvNode({
+              id: 3,
+              kind: "version",
+              label: "Original",
+              title: "Original",
+              runtime: "1:30:09",
+              overview: "A different cut.",
+              url: "stream/tv/11/nodes/3/master.m3u8",
+              seasonNumber: 1,
+              episodeNumber: 1,
+            }),
+            tvNode({
+              id: 4,
+              kind: "version",
+              label: "Alternate",
+              title: "Alternate",
+              runtime: "1:26:57",
+              url: "stream/tv/11/nodes/4/master.m3u8",
+              seasonNumber: 1,
+              episodeNumber: 1,
+            }),
+          ],
+        }),
+      ],
+    }),
+    tvNode({
+      id: 5,
+      kind: "season",
+      label: "2",
+      seasonNumber: 2,
+      children: [
+        tvNode({
+          id: 6,
+          kind: "episode",
+          label: "1",
+          title: "May the Giant Be With You",
+          overview: "The investigation spreads.",
+          runtime: "1:30:19",
+          url: "stream/tv/11/nodes/6/master.m3u8",
+          seasonNumber: 2,
+          episodeNumber: 1,
+        }),
+        tvNode({
+          id: 7,
+          kind: "extras",
+          label: "Extras",
+          seasonNumber: 2,
+          children: [
+            tvNode({
+              id: 8,
+              kind: "media",
+              label: "1",
+              title: "Deleted Scenes",
+              runtime: "1:00",
+              url: "stream/tv/11/nodes/8/deleted-scenes.mp4",
+              seasonNumber: 2,
+            }),
+          ],
+        }),
+      ],
+    }),
+    tvNode({
+      id: 9,
+      kind: "extras",
+      label: "Extras",
+      children: [
+        tvNode({
+          id: 10,
+          kind: "media",
+          label: "A Slice of Lynch",
+          title: "A Slice of Lynch",
+          runtime: "30:02",
+          url: "stream/tv/11/nodes/10/lynch.mp4",
+        }),
+        tvNode({
+          id: 11,
+          kind: "group",
+          label: "Secrets From Another Place",
+          title: "Secrets From Another Place",
+          children: [
+            tvNode({
+              id: 12,
+              kind: "media",
+              label: "Creating Season One",
+              title: "Creating Season One",
+              runtime: "30:38",
+              url: "stream/tv/11/nodes/12/season-one.mp4",
+            }),
+          ],
+        }),
+      ],
+    }),
+  ],
+};
 
 function fulfill(route: Route, status: number, body: unknown) {
   return route.fulfill({
@@ -113,12 +261,12 @@ test("shows the featured movie, the full rail, and genre rails", async ({ page }
   await expect(page.getByRole("heading", { level: 1, name: "Dune" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "All movies (3)" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Action (1)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Comedy (1)" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Drama (1)" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /comedy/i })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /adventure/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Dune/ })).toHaveCount(2);
   await expect(page.getByRole("button", { name: /Arrival/ })).toHaveCount(2);
-  await expect(page.getByRole("button", { name: /Amelie/ })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /Amelie/ })).toHaveCount(2);
 });
 
 test("shows an empty movie library", async ({ page }) => {
@@ -140,7 +288,7 @@ test("shows an error when the catalogue cannot be loaded", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /all movies/i })).toHaveCount(0);
 });
 
-test("shows TV series and keeps the generic hero", async ({ page }) => {
+test("features a TV series from the series list", async ({ page }) => {
   await stubSeries(page, [expanse]);
   await enterLibrary(page);
   await page.getByRole("tab", { name: "TV series" }).click();
@@ -149,25 +297,35 @@ test("shows TV series and keeps the generic hero", async ({ page }) => {
     "aria-selected",
     "true",
   );
-  await expect(page.getByRole("heading", { level: 1, name: "the catalogue" })).toBeVisible();
+  await expect(page.getByText("FEATURED SERIES")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "The Expanse" })).toBeVisible();
   await expect(page.getByText("FEATURED MOVIE")).toHaveCount(0);
-  await expect(page.getByText("FEATURED SERIES")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "All series (1)" })).toBeVisible();
   await expect(page.getByRole("button", { name: /The Expanse/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /action/i })).toHaveCount(0);
-  await expect(
-    page.getByText("TV series are not available from the catalogue service yet."),
-  ).toHaveCount(0);
+  await expect(page.getByText("No TV series found in your library.")).toHaveCount(0);
 });
 
-test("says TV series are not available yet", async ({ page }) => {
+test("lists a rail for every genre on a TV series", async ({ page }) => {
+  await stubSeries(page, [northernExposure, expanse]);
+  await enterLibrary(page);
+  await page.getByRole("tab", { name: "TV series" }).click();
+
+  await expect(page.getByRole("heading", { name: "All series (2)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Comedy (1)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Drama (1)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sci-Fi & Fantasy (1)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /action/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Northern Exposure/ })).toHaveCount(4);
+  await expect(page.getByRole("button", { name: /The Expanse/ })).toHaveCount(1);
+});
+
+test("shows an empty TV library", async ({ page }) => {
   await stubSeries(page, "missing");
   await enterLibrary(page);
   await page.getByRole("tab", { name: "TV series" }).click();
 
-  await expect(
-    page.getByText("TV series are not available from the catalogue service yet."),
-  ).toBeVisible();
+  await expect(page.getByText("No TV series found in your library.")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "the catalogue" })).toBeVisible();
   await expect(page.getByRole("heading", { name: /all series/i })).toHaveCount(0);
   await expect(page.getByRole("alert")).toHaveCount(0);
@@ -204,24 +362,165 @@ test("search narrows movies and clearing it restores the library", async ({ page
   await expect(page.getByRole("heading", { level: 1, name: "Dune" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "All movies (3)" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Action (1)" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Amelie/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Comedy (1)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Amelie/ })).toHaveCount(2);
 });
 
-test("search on the TV tab leaves the series list unchanged", async ({ page }) => {
-  await stubSeries(page, [expanse]);
+test("search narrows TV series", async ({ page }) => {
+  const queries: string[] = [];
+  await stubSeries(page, [expanse, twinPeaksCard]);
+  await page.route("**/api/search/tv**", (route) => {
+    const query = new URL(route.request().url()).searchParams.get("q") ?? "";
+    queries.push(query);
+    const results = [expanse, twinPeaksCard].filter((item) =>
+      item.title.toLowerCase().includes(query.toLowerCase()),
+    );
+    return fulfill(route, 200, {
+      query,
+      totalResults: results.length,
+      results,
+    });
+  });
   await enterLibrary(page);
   await page.getByRole("tab", { name: "TV series" }).click();
-  await expect(page.getByRole("heading", { name: "All series (1)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "All series (2)" })).toBeVisible();
 
-  const searchRequest = page.waitForRequest(
+  const movieSearch = page.waitForRequest(
     (request) => request.url().includes("/api/search/movies"),
     { timeout: 1_200 },
   );
-  await page.getByPlaceholder("Search your library").fill("dune");
+  await page.getByPlaceholder("Search your library").fill("peaks");
 
-  await expect(searchRequest).rejects.toThrow();
-  await expect(page.getByRole("heading", { level: 1, name: "the catalogue" })).toBeVisible();
+  await expect(page.getByText("FEATURED SERIES")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Twin Peaks" })).toBeVisible();
+  await expect(page.getByText("FEATURED MOVIE")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "All series (1)" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /The Expanse/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Twin Peaks/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /The Expanse/ })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /all movies/i })).toHaveCount(0);
+  await expect(movieSearch).rejects.toThrow();
+  expect(queries).toEqual(["peaks"]);
+});
+
+test("lists episode versions and keeps extras with their season or the series", async ({
+  page,
+}) => {
+  await stubSeries(page, [twinPeaksCard]);
+  await page.route("**/api/browse/tv/**", (route) => fulfill(route, 200, twinPeaksDetail));
+  await enterLibrary(page);
+  await page.getByRole("tab", { name: "TV series" }).click();
+  await page.getByRole("button", { name: /Twin Peaks/ }).click();
+
+  const dialog = page.getByRole("dialog");
+  const original = dialog.getByRole("article", { name: "Episode 1 · Pilot · Original" });
+  const alternate = dialog.getByRole("article", { name: "Episode 1 · Pilot · Alternate" });
+  await expect(original.getByText("The body is found.")).toBeVisible();
+  await expect(alternate.getByText("The body is found.")).toBeVisible();
+  await expect(original.getByText("1:30:09")).toBeVisible();
+  await expect(alternate.getByText("1:26:57")).toBeVisible();
+  await expect(original.getByRole("img", { name: "Episode 1 · Pilot · Original still" })).toBeVisible();
+  await expect(alternate.getByRole("img", { name: "Episode 1 · Pilot · Alternate still" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Play now" })).toHaveCount(0);
+
+  const seasonTwo = dialog.getByRole("region", { name: "Season 2" });
+  await expect(seasonTwo.getByRole("button", { name: /Deleted Scenes/ })).toBeVisible();
+  await expect(seasonTwo.getByRole("button", { name: /Slice of Lynch/ })).toHaveCount(0);
+
+  const extras = dialog.getByRole("region", { name: "Extras" });
+  await expect(extras.getByRole("button", { name: /Slice of Lynch/ })).toBeVisible();
+  await expect(extras.getByText("Secrets From Another Place")).toBeVisible();
+  await expect(extras.getByRole("button", { name: /Deleted Scenes/ })).toHaveCount(0);
+
+  await original.getByRole("button", { name: "Play Episode 1 · Pilot · Original" }).click();
+
+  const player = page.getByRole("dialog");
+  await expect(player.getByRole("heading", { name: "Episode 1 · Pilot · Original" })).toBeVisible();
+  await expect(player.getByText(/Twin Peaks\s+·\s+Season 1\s+·\s+1:30:09/)).toBeVisible();
+});
+
+test("shows watched progress under each episode and plays the next one", async ({ page }) => {
+  await stubSeries(page, [twinPeaksCard]);
+  await page.route("**/api/browse/tv/**", (route) => fulfill(route, 200, twinPeaksDetail));
+  await page.route("**/api/playback/tv**", (route) => {
+    if (route.request().method() !== "GET") {
+      return fulfill(route, 200, {
+        nodeId: 3,
+        seriesId: twinPeaksCard.id,
+        progress: 50,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      });
+    }
+
+    return fulfill(route, 200, {
+      items: [
+        {
+          nodeId: 3,
+          seriesId: twinPeaksCard.id,
+          progress: 50,
+          updatedAt: "2026-01-02T00:00:00.000Z",
+        },
+        {
+          nodeId: 6,
+          seriesId: twinPeaksCard.id,
+          progress: 100,
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+  });
+  await enterLibrary(page);
+  await page.getByRole("tab", { name: "TV series" }).click();
+  await page.getByRole("button", { name: /Twin Peaks/ }).first().click();
+
+  const dialog = page.getByRole("dialog");
+  const original = dialog.getByRole("article", { name: "Episode 1 · Pilot · Original" });
+  const alternate = dialog.getByRole("article", { name: "Episode 1 · Pilot · Alternate" });
+  const finished = dialog.getByRole("article", { name: "Episode 1 · May the Giant Be With You" });
+  const halfway = original.getByRole("progressbar", { name: "50% watched" });
+
+  await expect(halfway).toBeVisible();
+  await expect(alternate.getByRole("progressbar", { name: "0% watched" })).toBeVisible();
+  await expect(finished.getByRole("progressbar", { name: "100% watched" })).toBeVisible();
+  await expect(halfway.locator(":scope > *")).toHaveCSS("background-color", "rgb(59, 130, 246)");
+  expect(
+    await original.evaluate((article) => {
+      const overview = [...article.querySelectorAll("p")].find(
+        (paragraph) => paragraph.textContent === "The body is found.",
+      );
+      const bar = article.querySelector("[role='progressbar']");
+      if (!overview || !bar) {
+        return false;
+      }
+      return Boolean(overview.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }),
+  ).toBe(true);
+  expect(
+    await halfway.evaluate((track) => {
+      const fill = track.firstElementChild;
+      if (!(fill instanceof HTMLElement)) {
+        return 0;
+      }
+      const trackWidth = track.getBoundingClientRect().width;
+      return trackWidth === 0 ? 0 : fill.getBoundingClientRect().width / trackWidth;
+    }),
+  ).toBeCloseTo(0.5, 1);
+
+  await original.getByRole("button", { name: "Play Episode 1 · Pilot · Original" }).click();
+
+  const player = page.getByRole("dialog");
+  await expect(player.getByRole("heading", { name: "Episode 1 · Pilot · Original" })).toBeVisible();
+  await player.locator("video").evaluate((video: HTMLVideoElement) => {
+    video.dispatchEvent(new Event("ended"));
+  });
+  await expect(
+    player.getByRole("heading", { name: "Episode 1 · May the Giant Be With You" }),
+  ).toBeVisible();
+
+  await player.locator("video").evaluate((video: HTMLVideoElement) => {
+    video.dispatchEvent(new Event("ended"));
+  });
+  await expect(
+    player.getByRole("heading", { name: "Episode 1 · May the Giant Be With You" }),
+  ).toBeVisible();
+  await expect(player.getByRole("heading", { name: "Episode 1 · Pilot · Alternate" })).toHaveCount(0);
 });
