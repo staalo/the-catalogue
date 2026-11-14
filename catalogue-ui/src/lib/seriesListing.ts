@@ -1,3 +1,4 @@
+import { FINISHED_PROGRESS, isContinueWatching, type SeriesProgressEntry } from '@/lib/continueWatching';
 import { catalogImage, toStreamUrl } from '@/lib/media';
 import type { TvContentNode } from '@/types';
 
@@ -39,6 +40,14 @@ export type SeasonSection = {
 export type SeriesContent = {
   seasons: SeasonSection[];
   extras: ExtraRow[];
+};
+
+/** The action under a series overview. Progress is set only while an episode is unfinished. */
+export type SeriesPlayTarget = {
+  label: 'Play now' | 'Continue' | 'Next episode';
+  playback: SeriesPlayback;
+  runtime: string;
+  progress?: number;
 };
 
 const JOINER = '  ·  ';
@@ -92,6 +101,67 @@ export function nextEpisodePlayback(
     .slice(currentIndex + 1)
     .find((episode) => episode.episodeId !== currentEpisodeId && episode.playback);
   return next?.playback ?? null;
+}
+
+/**
+ * Play now starts the first episode. Continue resumes the newest episode still
+ * in progress. Next episode follows a finished episode when more remain.
+ * A finished cut counts for the whole episode, so another version is skipped.
+ */
+export function seriesPlayTarget(
+  episodes: EpisodeRow[],
+  entries: SeriesProgressEntry[],
+): SeriesPlayTarget | null {
+  const playable = episodes.filter((episode) => episode.playback);
+  const first = playable[0];
+  if (!first?.playback) {
+    return null;
+  }
+
+  const latest = new Map<number, number>();
+  const newestFirst: number[] = [];
+  for (const entry of entries) {
+    if (latest.has(entry.nodeId)) {
+      continue;
+    }
+    latest.set(entry.nodeId, entry.progress);
+    newestFirst.push(entry.nodeId);
+  }
+
+  const finishedEpisodeIds = new Set<number>();
+  for (const episode of playable) {
+    const progress = latest.get(episode.nodeId);
+    if (progress !== undefined && progress >= FINISHED_PROGRESS) {
+      finishedEpisodeIds.add(episode.episodeId);
+    }
+  }
+
+  const currentId = newestFirst.find((nodeId) => {
+    const episode = playable.find((row) => row.nodeId === nodeId);
+    return (
+      episode !== undefined
+      && !finishedEpisodeIds.has(episode.episodeId)
+      && isContinueWatching(latest.get(nodeId))
+    );
+  });
+  const current = playable.find((episode) => episode.nodeId === currentId);
+  if (current?.playback) {
+    return {
+      label: 'Continue',
+      playback: current.playback,
+      runtime: current.runtime,
+      progress: latest.get(current.nodeId),
+    };
+  }
+
+  if (finishedEpisodeIds.size > 0) {
+    const next = playable.find((episode) => !finishedEpisodeIds.has(episode.episodeId));
+    if (next?.playback) {
+      return { label: 'Next episode', playback: next.playback, runtime: next.runtime };
+    }
+  }
+
+  return { label: 'Play now', playback: first.playback, runtime: first.runtime };
 }
 
 function toSeason(

@@ -53,6 +53,7 @@ test("shows how much of the item has been watched", async () => {
     .toBeVisible();
 
   await expect.poll(() => progressFillRatio(screen)).toBeCloseTo(0.4, 2);
+  expect(progressFillColor(screen)).toBe("rgb(59, 130, 246)");
 });
 
 test("omits the poster image when the item has none", async () => {
@@ -69,14 +70,19 @@ test("omits the poster image when the item has none", async () => {
   await expect.element(screen.getByRole("img")).not.toBeInTheDocument();
 });
 
-function progressFillRatio(screen: Awaited<ReturnType<typeof render>>): number {
+function progressFill(screen: Awaited<ReturnType<typeof render>>): HTMLElement | null {
   const poster = screen
     .getByRole("button", { name: /dune/i })
     .element()
     .querySelector(".poster");
-  const track = poster?.querySelector(":scope > div");
-  const fill = track?.firstElementChild;
-  if (!(track instanceof HTMLElement) || !(fill instanceof HTMLElement)) {
+  const fill = poster?.querySelector(":scope > div")?.firstElementChild;
+  return fill instanceof HTMLElement ? fill : null;
+}
+
+function progressFillRatio(screen: Awaited<ReturnType<typeof render>>): number {
+  const fill = progressFill(screen);
+  const track = fill?.parentElement;
+  if (!(track instanceof HTMLElement) || !fill) {
     return 0;
   }
 
@@ -86,4 +92,9 @@ function progressFillRatio(screen: Awaited<ReturnType<typeof render>>): number {
   }
 
   return fill.getBoundingClientRect().width / trackWidth;
+}
+
+function progressFillColor(screen: Awaited<ReturnType<typeof render>>): string {
+  const fill = progressFill(screen);
+  return fill ? getComputedStyle(fill).backgroundColor : "";
 }

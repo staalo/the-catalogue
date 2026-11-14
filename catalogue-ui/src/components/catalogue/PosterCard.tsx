@@ -2,6 +2,8 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import type { Media } from '@/types';
 
+const WATCHED_PROGRESS = '#3b82f6';
+
 type PosterCardProps = {
   item: Media;
   onOpen: (item: Media) => void;
@@ -62,7 +64,7 @@ export function PosterCard({ item, onOpen }: PosterCardProps) {
               sx={{
                 height: '100%',
                 width: `${item.progress}%`,
-                background: 'primary.main',
+                backgroundColor: WATCHED_PROGRESS,
               }}
             />
           </Box>

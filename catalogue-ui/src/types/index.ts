@@ -91,6 +91,8 @@ export type Media = {
   type: MediaType;
   year: string;
   meta: string;
+  /** Movie length in minutes. Used to label watched time in the detail view. */
+  runtimeMinutes?: number;
   image: string;
   backdrop: string;
   progress?: number;
@@ -192,5 +194,5 @@ export type PlayerTarget = {
   seriesId?: number;
   playbackUser?: string;
   /** Episode, version, and extra progress is stored separately from movies. */
-  playbackKind?: 'movie' | 'tv';
+  playbackKind?: 'movie' | 'tv' | 'extra';
 };

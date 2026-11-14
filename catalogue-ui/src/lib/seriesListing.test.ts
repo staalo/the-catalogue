@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { mapSeriesToMedia } from "@/lib/media";
-import { listSeriesContent, nextEpisodePlayback } from "@/lib/seriesListing";
+import { listSeriesContent, nextEpisodePlayback, seriesPlayTarget } from "@/lib/seriesListing";
 import type { SeriesSummary, TvContentNode } from "@/types";
 
 function node(
@@ -161,6 +161,65 @@ test("gives every cut the episode overview, title, and still", () => {
     heading: "Episode 2",
     overview: "The investigation spreads.",
     runtime: "44:31",
+  });
+});
+
+function episodeRows() {
+  return listSeriesContent("Twin Peaks", twinPeaks, 4).seasons.flatMap((season) => season.episodes);
+}
+
+test("starts an unwatched series at the first episode", () => {
+  expect(seriesPlayTarget(episodeRows(), [])).toMatchObject({
+    label: "Play now",
+    playback: { nodeId: 3 },
+  });
+  expect(seriesPlayTarget(episodeRows(), [])?.progress).toBeUndefined();
+});
+
+test("continues the newest episode that is still in progress", () => {
+  expect(
+    seriesPlayTarget(episodeRows(), [
+      { nodeId: 5, seriesId: 4, progress: 20 },
+      { nodeId: 3, seriesId: 4, progress: 40 },
+    ]),
+  ).toMatchObject({
+    label: "Continue",
+    progress: 20,
+    runtime: "44:31",
+    playback: { nodeId: 5 },
+  });
+});
+
+test("plays the next episode after a finished one and skips its other cuts", () => {
+  expect(
+    seriesPlayTarget(episodeRows(), [{ nodeId: 4, seriesId: 4, progress: 100 }]),
+  ).toMatchObject({
+    label: "Next episode",
+    playback: { nodeId: 5, title: "Episode 2" },
+  });
+  expect(
+    seriesPlayTarget(episodeRows(), [{ nodeId: 4, seriesId: 4, progress: 100 }])?.progress,
+  ).toBeUndefined();
+  expect(
+    seriesPlayTarget(episodeRows(), [
+      { nodeId: 4, seriesId: 4, progress: 40 },
+      { nodeId: 3, seriesId: 4, progress: 100 },
+    ]),
+  ).toMatchObject({
+    label: "Next episode",
+    playback: { nodeId: 5 },
+  });
+});
+
+test("starts over once every episode is finished", () => {
+  expect(
+    seriesPlayTarget(episodeRows(), [
+      { nodeId: 3, seriesId: 4, progress: 100 },
+      { nodeId: 5, seriesId: 4, progress: 95 },
+    ]),
+  ).toMatchObject({
+    label: "Play now",
+    playback: { nodeId: 3 },
   });
 });
 

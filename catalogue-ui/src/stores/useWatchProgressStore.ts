@@ -9,6 +9,7 @@ const LEGACY_PROGRESS_KEY = 'catalogue-watch-progress';
 
 type WatchProgressState = {
   progressById: Record<number, number>;
+  extraProgressById: Record<number, number>;
   tvProgressByNodeId: Record<number, number>;
   /** Newest playback first, so a series rail can use the latest unfinished episode. */
   tvProgressEntries: SeriesProgressEntry[];
@@ -18,6 +19,7 @@ type WatchProgressState = {
   hydrateTvProgress: (userName: string, items: TvPlaybackProgress[]) => void;
   resetProgress: () => void;
   setProgress: (id: number, percent: number) => void;
+  setExtraProgress: (id: number, percent: number) => void;
   setTvProgress: (id: number, percent: number, seriesId?: number) => void;
 };
 
@@ -69,6 +71,7 @@ function toSeriesProgress(items: TvPlaybackProgress[]): SeriesProgressEntry[] {
 
 export const useWatchProgressStore = create<WatchProgressState>()((set) => ({
   progressById: {},
+  extraProgressById: {},
   tvProgressByNodeId: {},
   tvProgressEntries: [],
   hydratedFor: null,
@@ -93,6 +96,7 @@ export const useWatchProgressStore = create<WatchProgressState>()((set) => ({
   resetProgress: () =>
     set({
       progressById: {},
+      extraProgressById: {},
       tvProgressByNodeId: {},
       tvProgressEntries: [],
       hydratedFor: null,
@@ -102,6 +106,11 @@ export const useWatchProgressStore = create<WatchProgressState>()((set) => ({
     set((state) => {
       const progressById = writeProgress(state.progressById, id, percent);
       return progressById ? { progressById } : state;
+    }),
+  setExtraProgress: (id, percent) =>
+    set((state) => {
+      const extraProgressById = writeProgress(state.extraProgressById, id, percent);
+      return extraProgressById ? { extraProgressById } : state;
     }),
   setTvProgress: (id, percent, seriesId) =>
     set((state) => {
