@@ -1,11 +1,12 @@
-import PlayArrow from '@mui/icons-material/PlayArrow';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { MovieExtra } from '@/components/catalogue/MovieExtra';
+import { MoviePlayButton } from '@/components/catalogue/MoviePlayButton';
+import { WatchProgress } from '@/components/catalogue/WatchProgress';
 import { SeriesDetails } from '@/components/catalogue/SeriesDetails';
 import type { SeriesPlayback } from '@/lib/seriesListing';
 import type { Extra, Media, TvContentNode } from '@/types';
@@ -82,18 +83,14 @@ export function MediaDetailsDialog({
             />
           ) : (
             <>
-              <Button
-                variant="contained"
-                startIcon={<PlayArrow />}
-                sx={{ alignSelf: 'flex-start', mt: 1 }}
-                onClick={() => {
-                  if (item) {
-                    onPlay(item);
-                  }
-                }}
-              >
-                Play now
-              </Button>
+              {item ? (
+                <WatchProgress
+                  movieId={item.id}
+                  runtimeMinutes={item.runtimeMinutes}
+                  fallback={item.progress}
+                />
+              ) : null}
+              <MoviePlayButton item={item} onPlay={onPlay} />
               {item?.extras?.length ? (
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
@@ -101,26 +98,11 @@ export function MediaDetailsDialog({
                   </Typography>
                   <Stack spacing={1}>
                     {item.extras.map((extra) => (
-                      <Button
+                      <MovieExtra
                         key={extra.id}
-                        variant="outlined"
-                        color="inherit"
-                        startIcon={<PlayArrow />}
-                        onClick={() => onPlayExtra(item, extra)}
-                        sx={{
-                          justifyContent: 'flex-start',
-                          borderColor: 'rgba(255,255,255,.18)',
-                          color: 'white',
-                          textTransform: 'none',
-                        }}
-                      >
-                        <Box component="span" sx={{ flex: 1, textAlign: 'left' }}>
-                          {extra.title}
-                        </Box>
-                        <Typography component="span" variant="caption" color="text.secondary">
-                          {extra.runtime}
-                        </Typography>
-                      </Button>
+                        extra={extra}
+                        onPlay={() => onPlayExtra(item, extra)}
+                      />
                     ))}
                   </Stack>
                 </Box>

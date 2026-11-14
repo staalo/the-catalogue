@@ -56,6 +56,61 @@ test("shows the movie details and plays it", async () => {
   expect(onPlay).toHaveBeenCalledWith(dune);
 });
 
+test("shows watched time between the overview and play", async () => {
+  useWatchProgressStore.setState({ progressById: { 1: 40 } });
+  const item: Media = { ...dune, runtimeMinutes: 155 };
+  const screen = await render(
+    <MediaDetailsDialog item={item} onClose={vi.fn()} onPlay={vi.fn()} onPlayExtra={vi.fn()} />,
+    { wrapper: ThemeWrapper },
+  );
+
+  const dialog = screen.getByRole("dialog");
+  const overview = dialog.getByText(dune.description);
+  const bar = dialog.getByRole("progressbar", { name: "40% watched" });
+  const play = dialog.getByRole("button", { name: "Continue" });
+  await expect.element(dialog.getByRole("button", { name: "Play now" })).not.toBeInTheDocument();
+  const watched = dialog.getByText("1h 2m / 2h 35m");
+
+  await expect.element(bar).toBeVisible();
+  await expect.element(watched).toBeVisible();
+  await expect.poll(() => progressFill(bar.element())).toBeCloseTo(0.4, 2);
+  expect(watchedColor(bar.element())).toBe("rgb(59, 130, 246)");
+  expect(isBefore(overview.element(), bar.element())).toBe(true);
+  expect(isBefore(bar.element(), play.element())).toBe(true);
+  await expect.poll(() => watched.element().getBoundingClientRect().left)
+    .toBeGreaterThanOrEqual(bar.element().getBoundingClientRect().right - 1);
+});
+
+test("hides the movie bar when nothing has been watched", async () => {
+  useWatchProgressStore.setState({ progressById: {} });
+  const item: Media = { ...dune, runtimeMinutes: 155 };
+  const screen = await render(
+    <MediaDetailsDialog item={item} onClose={vi.fn()} onPlay={vi.fn()} onPlayExtra={vi.fn()} />,
+    { wrapper: ThemeWrapper },
+  );
+
+  await expect.element(screen.getByRole("progressbar")).not.toBeInTheDocument();
+  await expect.element(screen.getByText("0m / 2h 35m")).not.toBeInTheDocument();
+  await expect.element(screen.getByRole("button", { name: "Play now" })).toBeVisible();
+});
+
+test("keeps play now when the movie is finished", async () => {
+  useWatchProgressStore.setState({ progressById: { 1: 95 } });
+  const screen = await render(
+    <MediaDetailsDialog
+      item={{ ...dune, runtimeMinutes: 155 }}
+      onClose={vi.fn()}
+      onPlay={vi.fn()}
+      onPlayExtra={vi.fn()}
+    />,
+    { wrapper: ThemeWrapper },
+  );
+
+  await expect.element(screen.getByRole("button", { name: "Play now" })).toBeVisible();
+  await expect.element(screen.getByRole("button", { name: "Continue" })).not.toBeInTheDocument();
+  await expect.element(screen.getByRole("progressbar")).not.toBeInTheDocument();
+});
+
 test("plays an extra", async () => {
   const onPlayExtra = vi.fn();
   const item: Media = { ...dune, genres: [], extras: [trailer] };
@@ -66,13 +121,103 @@ test("plays an extra", async () => {
 
   await expect.element(screen.getByRole("heading", { name: "Extras" })).toBeVisible();
   await expect.element(screen.getByText("Science Fiction")).not.toBeInTheDocument();
-  await expect.element(screen.getByText("2m")).toBeVisible();
+  const extraButton = screen.getByRole("button", { name: /trailer/i });
+  const runtime = screen.getByText("2m");
+  await expect.element(runtime).toBeVisible();
+  await expect
+    .element(screen.getByRole("progressbar", { name: "50% watched" }))
+    .not.toBeInTheDocument();
+  await expect.poll(() => extraRowSpansContent(extraButton.element())).toBe(true);
+  await expect.poll(() => runtimeSitsOnTheRight(extraButton.element(), runtime.element())).toBe(true);
 
-  await screen.getByRole("button", { name: /trailer/i }).click();
+  await extraButton.click();
 
   expect(onPlayExtra).toHaveBeenCalledOnce();
   expect(onPlayExtra).toHaveBeenCalledWith(item, trailer);
 });
+
+test("shows an unwatched extra runtime in movie format", async () => {
+  const featurette: Extra = { ...trailer, runtime: "8:46" };
+  const item: Media = { ...dune, genres: [], extras: [featurette] };
+  const screen = await render(
+    <MediaDetailsDialog item={item} onClose={vi.fn()} onPlay={vi.fn()} onPlayExtra={vi.fn()} />,
+    { wrapper: ThemeWrapper },
+  );
+
+  await expect.element(screen.getByText("8m 46s")).toBeVisible();
+  await expect.element(screen.getByText("8:46")).not.toBeInTheDocument();
+});
+
+test("shows a progress bar under a partly watched extra", async () => {
+  useWatchProgressStore.setState({ extraProgressById: { 10: 50 }, progressById: {} });
+  const featurette: Extra = { ...trailer, runtime: "8:46" };
+  const item: Media = { ...dune, genres: [], extras: [featurette] };
+  const screen = await render(
+    <MediaDetailsDialog item={item} onClose={vi.fn()} onPlay={vi.fn()} onPlayExtra={vi.fn()} />,
+    { wrapper: ThemeWrapper },
+  );
+
+  const title = screen.getByRole("button", { name: /trailer/i });
+  const bar = screen.getByRole("progressbar", { name: "50% watched" });
+  const watched = screen.getByText("4m 23s / 8m 46s");
+  await expect.element(bar).toBeVisible();
+  await expect.element(watched).toBeVisible();
+  await expect.element(screen.getByText("8:46")).not.toBeInTheDocument();
+  await expect.poll(() => progressFill(bar.element())).toBeCloseTo(0.5, 2);
+  expect(watchedColor(bar.element())).toBe("rgb(59, 130, 246)");
+  expect(title.element().contains(bar.element())).toBe(true);
+  expect(title.element().contains(watched.element())).toBe(true);
+  await expect.poll(() => fitsInside(title.element(), bar.element())).toBe(true);
+});
+
+test("hides the extra progress bar when the extra is finished", async () => {
+  useWatchProgressStore.setState({ extraProgressById: { 10: 100 }, progressById: {} });
+  const item: Media = { ...dune, genres: [], extras: [trailer] };
+  const screen = await render(
+    <MediaDetailsDialog item={item} onClose={vi.fn()} onPlay={vi.fn()} onPlayExtra={vi.fn()} />,
+    { wrapper: ThemeWrapper },
+  );
+
+  await expect.element(screen.getByRole("button", { name: /trailer/i })).toBeVisible();
+  await expect
+    .element(screen.getByRole("progressbar", { name: "100% watched" }))
+    .not.toBeInTheDocument();
+  await expect.element(screen.getByText("2m")).toBeVisible();
+});
+
+function fitsInside(container: Element, child: Element): boolean {
+  const outer = container.getBoundingClientRect();
+  const inner = child.getBoundingClientRect();
+  return (
+    inner.top > outer.top
+    && inner.bottom < outer.bottom
+    && inner.left > outer.left
+    && inner.right < outer.right
+  );
+}
+
+function extraRowSpansContent(button: Element): boolean {
+  const content = button.closest(".MuiDialogContent-root");
+  if (!content) {
+    return false;
+  }
+
+  const contentBox = content.getBoundingClientRect();
+  const buttonBox = button.getBoundingClientRect();
+  const style = getComputedStyle(content);
+  const padLeft = Number.parseFloat(style.paddingLeft);
+  const padRight = Number.parseFloat(style.paddingRight);
+  return (
+    Math.abs(buttonBox.left - (contentBox.left + padLeft)) < 1
+    && Math.abs(buttonBox.right - (contentBox.right - padRight)) < 1
+  );
+}
+
+function runtimeSitsOnTheRight(button: Element, runtime: Element): boolean {
+  const buttonBox = button.getBoundingClientRect();
+  const runtimeBox = runtime.getBoundingClientRect();
+  return buttonBox.right - runtimeBox.right < 24 && runtimeBox.left > buttonBox.left + buttonBox.width / 2;
+}
 
 function tvNode(
   values: Partial<TvContentNode> & Pick<TvContentNode, "id" | "kind" | "label">,
@@ -151,6 +296,21 @@ const twinPeaksNodes = [
         seasonNumber: 1,
         episodeNumber: 2,
       }),
+      tvNode({
+        id: 21,
+        kind: "extras",
+        label: "Extras",
+        children: [
+          tvNode({
+            id: 22,
+            kind: "media",
+            label: "Log Lady Intro",
+            title: "Log Lady Intro",
+            runtime: "0:30",
+            url: "stream/tv/4/nodes/22/log-lady.mp4",
+          }),
+        ],
+      }),
     ],
   }),
   tvNode({
@@ -194,7 +354,14 @@ const twinPeaksNodes = [
 ];
 
 test("lists both episode versions and separates season extras from series extras", async () => {
-  useWatchProgressStore.setState({ tvProgressByNodeId: { 3: 40, 20: 100 } });
+  useWatchProgressStore.setState({
+    tvProgressByNodeId: { 3: 40, 20: 100, 22: 50 },
+    tvProgressEntries: [
+      { nodeId: 22, seriesId: 4, progress: 50 },
+      { nodeId: 3, seriesId: 4, progress: 40 },
+      { nodeId: 20, seriesId: 4, progress: 100 },
+    ],
+  });
   const onPlaySeries = vi.fn();
   const screen = await render(
     <MediaDetailsDialog
@@ -214,11 +381,32 @@ test("lists both episode versions and separates season extras from series extras
   const alternate = dialog.getByRole("article", { name: "Episode 1 · Pilot · Alternate" });
 
   await expect.element(dialog.getByRole("heading", { name: "Twin Peaks" })).toBeVisible();
+  const start = dialog.getByRole("region", { name: "Start watching" });
+  const continueWatching = start.getByRole("button", { name: "Continue" });
+  await expect.element(continueWatching).toBeVisible();
+  await expect.element(start.getByRole("progressbar", { name: "40% watched" })).toBeVisible();
+  await expect.element(start.getByText("36m / 1h 30m")).toBeVisible();
   await expect.element(dialog.getByRole("button", { name: "Play now" })).not.toBeInTheDocument();
+  await expect.element(dialog.getByRole("button", { name: "Next episode" })).not.toBeInTheDocument();
+  expect(isBefore(dialog.getByText(twinPeaks.description).element(), start.element())).toBe(true);
+  expect(isBefore(start.element(), dialog.getByRole("region", { name: "Season 1" }).element())).toBe(
+    true,
+  );
+  expect(
+    isBefore(
+      start.getByRole("progressbar", { name: "40% watched" }).element(),
+      continueWatching.element(),
+    ),
+  ).toBe(true);
   await expect.element(original.getByText("The body is found.")).toBeVisible();
   await expect.element(alternate.getByText("The body is found.")).toBeVisible();
-  await expect.element(original.getByText("1:30:09")).toBeVisible();
-  await expect.element(alternate.getByText("1:26:57")).toBeVisible();
+  await expect.element(original.getByText("36m / 1h 30m")).toBeVisible();
+  await expect.element(alternate.getByText("0m / 1h 27m")).not.toBeInTheDocument();
+  await expect.element(alternate.getByText("1h 27m", { exact: true })).toBeVisible();
+  await expect
+    .element(dialog.getByRole("article", { name: "Episode 2" }).getByText("45m / 45m"))
+    .toBeVisible();
+  await expect.element(dialog.getByText("0m / 1m")).toBeVisible();
   await expect
     .element(original.getByRole("img", { name: "Episode 1 · Pilot · Original still" }))
     .toHaveAttribute("src", "https://image.tmdb.org/t/p/w300/pilot.jpg");
@@ -237,14 +425,28 @@ test("lists both episode versions and separates season extras from series extras
   await expect.poll(() => progressFill(unwatched.element())).toBe(0);
   await expect.poll(() => progressFill(finished.element())).toBeCloseTo(1, 2);
   expect(watchedColor(halfway.element())).toBe("rgb(59, 130, 246)");
+  const halfwayTime = original.getByText("36m / 1h 30m");
+  await expect.poll(() => halfwayTime.element().getBoundingClientRect().left)
+    .toBeGreaterThanOrEqual(halfway.element().getBoundingClientRect().right - 1);
 
+  const seasonOne = dialog.getByRole("region", { name: "Season 1" });
   const seasonTwo = dialog.getByRole("region", { name: "Season 2" });
+  const seasonOneExtras = seasonOne.getByRole("heading", { name: "Season 1 - Extras" });
+  const seasonTwoTitle = seasonTwo.getByRole("heading", { name: "Season 2", exact: true });
+  const seasonTwoExtras = seasonTwo.getByRole("heading", { name: "Season 2 - Extras" });
+  await expect.element(seasonOneExtras).toBeVisible();
+  await expect.element(seasonOne.getByRole("button", { name: /Log Lady Intro/ })).toBeVisible();
+  await expect.element(seasonTwoExtras).toBeVisible();
   await expect.element(seasonTwo.getByRole("button", { name: /Deleted Scenes/ })).toBeVisible();
   await expect
     .element(seasonTwo.getByRole("button", { name: /Slice of Lynch/ }))
     .not.toBeInTheDocument();
 
   const extras = dialog.getByRole("region", { name: "Extras" });
+  const seriesExtras = extras.getByRole("heading", { name: "Extras", exact: true });
+  expect(isBefore(seasonOneExtras.element(), seasonTwoTitle.element())).toBe(true);
+  expect(isBefore(seasonTwoTitle.element(), seasonTwoExtras.element())).toBe(true);
+  expect(isBefore(seasonTwoExtras.element(), seriesExtras.element())).toBe(true);
   await expect.element(extras.getByRole("button", { name: /Slice of Lynch/ })).toBeVisible();
   await expect
     .element(extras.getByRole("button", { name: /Deleted Scenes/ }))
@@ -260,6 +462,67 @@ test("lists both episode versions and separates season extras from series extras
       title: "Episode 1 · Pilot · Original",
       url: "/api/stream/tv/4/nodes/3/master.m3u8",
     }),
+  );
+});
+
+test("plays the first episode when nothing has been watched", async () => {
+  useWatchProgressStore.setState({ tvProgressByNodeId: {}, tvProgressEntries: [] });
+  const onPlaySeries = vi.fn();
+  const screen = await render(
+    <MediaDetailsDialog
+      item={twinPeaks}
+      seriesStatus="ready"
+      seriesNodes={twinPeaksNodes}
+      onClose={vi.fn()}
+      onPlay={vi.fn()}
+      onPlayExtra={vi.fn()}
+      onPlaySeries={onPlaySeries}
+    />,
+    { wrapper: ThemeWrapper },
+  );
+
+  const start = screen.getByRole("region", { name: "Start watching" });
+  const playNow = start.getByRole("button", { name: "Play now" });
+  await expect.element(playNow).toBeVisible();
+  await expect.element(start.getByRole("progressbar")).not.toBeInTheDocument();
+  expect(isBefore(screen.getByText(twinPeaks.description).element(), start.element())).toBe(true);
+
+  await playNow.click();
+
+  expect(onPlaySeries).toHaveBeenCalledOnce();
+  expect(onPlaySeries).toHaveBeenCalledWith(
+    expect.objectContaining({ nodeId: 3, seriesId: 4, title: "Episode 1 · Pilot · Original" }),
+  );
+});
+
+test("plays the next episode when earlier episodes are finished", async () => {
+  useWatchProgressStore.setState({
+    tvProgressByNodeId: { 3: 100 },
+    tvProgressEntries: [{ nodeId: 3, seriesId: 4, progress: 100 }],
+  });
+  const onPlaySeries = vi.fn();
+  const screen = await render(
+    <MediaDetailsDialog
+      item={twinPeaks}
+      seriesStatus="ready"
+      seriesNodes={twinPeaksNodes}
+      onClose={vi.fn()}
+      onPlay={vi.fn()}
+      onPlayExtra={vi.fn()}
+      onPlaySeries={onPlaySeries}
+    />,
+    { wrapper: ThemeWrapper },
+  );
+
+  const start = screen.getByRole("region", { name: "Start watching" });
+  await expect.element(start.getByRole("progressbar")).not.toBeInTheDocument();
+  await expect.element(start.getByRole("button", { name: "Play now" })).not.toBeInTheDocument();
+
+  await start.getByRole("button", { name: "Next episode" }).click();
+
+  expect(onPlaySeries).toHaveBeenCalledOnce();
+  expect(onPlaySeries).toHaveBeenCalledWith(
+    expect.objectContaining({ nodeId: 20, seriesId: 4, title: "Episode 2" }),
   );
 });
 
@@ -287,6 +550,10 @@ test("stays closed when there is no item", async () => {
 
   await expect.element(screen.getByRole("dialog")).not.toBeInTheDocument();
 });
+
+function isBefore(earlier: Element, later: Element): boolean {
+  return (earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+}
 
 function progressFill(track: Element): number {
   const fill = track.firstElementChild;

@@ -15,7 +15,7 @@ type VideoPlayerProps = {
   src: string;
   mediaId?: number;
   playbackUser?: string;
-  playbackKind?: 'movie' | 'tv';
+  playbackKind?: 'movie' | 'tv' | 'extra';
   seriesId?: number;
   /** Called after the file plays through to the end. */
   onEnded?: () => void;
@@ -266,6 +266,7 @@ export function VideoPlayer({
   const [hlsEngine, setHlsEngine] = useState<Hls | null>(null);
   onEndedRef.current = onEnded;
   const setMovieProgress = useWatchProgressStore((state) => state.setProgress);
+  const setExtraProgress = useWatchProgressStore((state) => state.setExtraProgress);
   const setTvProgress = useWatchProgressStore((state) => state.setTvProgress);
 
   useEffect(() => {
@@ -302,6 +303,8 @@ export function VideoPlayer({
       if (percent !== null) {
         if (playbackKind === 'tv') {
           setTvProgress(mediaId, percent, seriesId);
+        } else if (playbackKind === 'extra') {
+          setExtraProgress(mediaId, percent);
         } else {
           setMovieProgress(mediaId, percent);
         }
@@ -318,6 +321,10 @@ export function VideoPlayer({
         }
 
         if (lastQueued === rounded) {
+          return;
+        }
+
+        if (playbackKind === 'extra') {
           return;
         }
 
@@ -365,7 +372,9 @@ export function VideoPlayer({
       const progressById =
         playbackKind === 'tv'
           ? useWatchProgressStore.getState().tvProgressByNodeId
-          : useWatchProgressStore.getState().progressById;
+          : playbackKind === 'extra'
+            ? useWatchProgressStore.getState().extraProgressById
+            : useWatchProgressStore.getState().progressById;
       const saved = progressById[mediaId];
       lastQueuedProgressRef.current = saved;
       if (saved && saved > 2 && saved < 95) {
@@ -391,7 +400,7 @@ export function VideoPlayer({
       video.removeAttribute('src');
       video.load();
     };
-  }, [src, mediaId, playbackUser, playbackKind, seriesId, setMovieProgress, setTvProgress]);
+  }, [src, mediaId, playbackUser, playbackKind, seriesId, setMovieProgress, setExtraProgress, setTvProgress]);
 
   return (
     <Box sx={{ position: 'relative', width: '100%' }}>

@@ -5,7 +5,13 @@ import Button from '@mui/material/Button';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { listSeriesContent, type ExtraRow, type SeriesPlayback } from '@/lib/seriesListing';
+import { WatchProgress } from '@/components/catalogue/WatchProgress';
+import {
+  listSeriesContent,
+  seriesPlayTarget,
+  type ExtraRow,
+  type SeriesPlayback,
+} from '@/lib/seriesListing';
 import { useWatchProgressStore } from '@/stores/useWatchProgressStore';
 import type { TvContentNode } from '@/types';
 
@@ -31,6 +37,8 @@ export function SeriesDetails({
   nodes,
   onPlay,
 }: SeriesDetailsProps) {
+  const tvProgressEntries = useWatchProgressStore((state) => state.tvProgressEntries);
+
   if (status === 'loading') {
     return <LinearProgress aria-label="Loading episodes" />;
   }
@@ -40,6 +48,10 @@ export function SeriesDetails({
   }
 
   const content = listSeriesContent(seriesTitle, nodes, seriesId);
+  const playTarget = seriesPlayTarget(
+    content.seasons.flatMap((season) => season.episodes),
+    tvProgressEntries.filter((entry) => entry.seriesId === seriesId),
+  );
   if (content.seasons.length === 0 && content.extras.length === 0) {
     return (
       <Typography color="text.secondary">
@@ -50,6 +62,25 @@ export function SeriesDetails({
 
   return (
     <Stack spacing={3} sx={{ mt: 1 }}>
+      {playTarget ? (
+        <Stack component="section" aria-label="Start watching" spacing={1.5}>
+          {playTarget.progress !== undefined ? (
+            <WatchProgress
+              nodeId={playTarget.playback.nodeId}
+              runtime={playTarget.runtime}
+              always
+            />
+          ) : null}
+          <Button
+            variant="contained"
+            startIcon={<PlayArrow />}
+            onClick={() => onPlay(playTarget.playback)}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            {playTarget.label}
+          </Button>
+        </Stack>
+      ) : null}
       {content.seasons.map((season) => (
         <Box key={season.nodeId} component="section" aria-label={season.heading}>
           <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>
@@ -84,22 +115,13 @@ export function SeriesDetails({
                   />
                 ) : null}
                 <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
-                  <Stack direction="row" spacing={1} alignItems="baseline">
-                    <Typography fontWeight={700} sx={{ flex: 1 }}>
-                      {episode.heading}
-                    </Typography>
-                    {episode.runtime ? (
-                      <Typography variant="caption" color="text.secondary">
-                        {episode.runtime}
-                      </Typography>
-                    ) : null}
-                  </Stack>
+                  <Typography fontWeight={700}>{episode.heading}</Typography>
                   {episode.overview ? (
                     <Typography variant="body2" color="rgba(255,255,255,.75)" lineHeight={1.5}>
                       {episode.overview}
                     </Typography>
                   ) : null}
-                  <NodeProgress nodeId={episode.nodeId} always />
+                  <WatchProgress nodeId={episode.nodeId} runtime={episode.runtime} always />
                   {episode.playback ? (
                     <Button
                       variant="outlined"
@@ -118,9 +140,19 @@ export function SeriesDetails({
             ))}
           </Stack>
           {season.extras.length ? (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-                Season extras
+            <Box
+              role="group"
+              aria-labelledby={`season-${season.nodeId}-extras`}
+              sx={{ mt: 2.5 }}
+            >
+              <Typography
+                id={`season-${season.nodeId}-extras`}
+                component="h3"
+                variant="h6"
+                fontWeight={800}
+                sx={{ mb: 1.5 }}
+              >
+                {season.heading} - Extras
               </Typography>
               <ExtraList extras={season.extras} onPlay={onPlay} />
             </Box>
@@ -174,7 +206,7 @@ function ExtraList({
                 </Typography>
               ) : null}
             </Button>
-            <NodeProgress nodeId={extra.nodeId} />
+            <WatchProgress nodeId={extra.nodeId} runtime={extra.runtime} />
             {extra.children.length ? (
               <ExtraList extras={extra.children} onPlay={onPlay} depth={depth + 1} />
             ) : null}
@@ -192,33 +224,3 @@ function ExtraList({
   );
 }
 
-const EPISODE_PROGRESS_TRACK = 'rgba(255,255,255,.2)';
-const EPISODE_PROGRESS_WATCHED = '#3b82f6';
-
-function NodeProgress({ nodeId, always = false }: { nodeId: number; always?: boolean }) {
-  const stored = useWatchProgressStore((state) => state.tvProgressByNodeId[nodeId]);
-  const progress = stored ?? 0;
-  if (!always && !stored) {
-    return null;
-  }
-
-  return (
-    <Box
-      role="progressbar"
-      aria-valuenow={progress}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-label={`${progress}% watched`}
-      sx={{
-        height: 3,
-        borderRadius: 1,
-        background: EPISODE_PROGRESS_TRACK,
-        overflow: 'hidden',
-      }}
-    >
-      <Box
-        sx={{ height: '100%', width: `${progress}%`, background: EPISODE_PROGRESS_WATCHED }}
-      />
-    </Box>
-  );
-}

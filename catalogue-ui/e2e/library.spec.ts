@@ -416,13 +416,18 @@ test("lists episode versions and keeps extras with their season or the series", 
   const alternate = dialog.getByRole("article", { name: "Episode 1 · Pilot · Alternate" });
   await expect(original.getByText("The body is found.")).toBeVisible();
   await expect(alternate.getByText("The body is found.")).toBeVisible();
-  await expect(original.getByText("1:30:09")).toBeVisible();
-  await expect(alternate.getByText("1:26:57")).toBeVisible();
+  await expect(original.getByText("1h 30m", { exact: true })).toBeVisible();
+  await expect(alternate.getByText("1h 27m", { exact: true })).toBeVisible();
+  await expect(original.getByText("0m / 1h 30m")).toHaveCount(0);
+  await expect(alternate.getByText("0m / 1h 27m")).toHaveCount(0);
   await expect(original.getByRole("img", { name: "Episode 1 · Pilot · Original still" })).toBeVisible();
   await expect(alternate.getByRole("img", { name: "Episode 1 · Pilot · Alternate still" })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Play now" })).toHaveCount(0);
+  const start = dialog.getByRole("region", { name: "Start watching" });
+  await expect(start.getByRole("button", { name: "Play now" })).toBeVisible();
+  await expect(start.getByRole("progressbar")).toHaveCount(0);
 
   const seasonTwo = dialog.getByRole("region", { name: "Season 2" });
+  await expect(seasonTwo.getByRole("heading", { name: "Season 2 - Extras" })).toBeVisible();
   await expect(seasonTwo.getByRole("button", { name: /Deleted Scenes/ })).toBeVisible();
   await expect(seasonTwo.getByRole("button", { name: /Slice of Lynch/ })).toHaveCount(0);
 
@@ -477,10 +482,17 @@ test("shows watched progress under each episode and plays the next one", async (
   const alternate = dialog.getByRole("article", { name: "Episode 1 · Pilot · Alternate" });
   const finished = dialog.getByRole("article", { name: "Episode 1 · May the Giant Be With You" });
   const halfway = original.getByRole("progressbar", { name: "50% watched" });
+  const start = dialog.getByRole("region", { name: "Start watching" });
 
+  await expect(start.getByRole("button", { name: "Continue" })).toBeVisible();
+  await expect(start.getByRole("progressbar", { name: "50% watched" })).toBeVisible();
+  await expect(start.getByText("45m / 1h 30m")).toBeVisible();
   await expect(halfway).toBeVisible();
+  await expect(original.getByText("45m / 1h 30m")).toBeVisible();
   await expect(alternate.getByRole("progressbar", { name: "0% watched" })).toBeVisible();
+  await expect(alternate.getByText("1h 27m", { exact: true })).toBeVisible();
   await expect(finished.getByRole("progressbar", { name: "100% watched" })).toBeVisible();
+  await expect(finished.getByText("1h 30m / 1h 30m")).toBeVisible();
   await expect(halfway.locator(":scope > *")).toHaveCSS("background-color", "rgb(59, 130, 246)");
   expect(
     await original.evaluate((article) => {

@@ -97,6 +97,9 @@ export function HomePage() {
       title: extra.title,
       subtitle: `${item.title} extra · ${extra.runtime}`,
       url: extra.url,
+      mediaId: extra.id,
+      playbackUser: user?.userName,
+      playbackKind: 'extra',
     });
   };
 
