@@ -1,0 +1,16 @@
+{
+  "DVD": {
+    "Title": "TV Series",
+    "Year": 2000
+  },
+  "Seasons": {
+    "1": {
+      "Episode 1": {
+        "File": "TV Series\\Season 1\\Episode 1.mp4"
+      },
+      "Episode 2": {
+        "File": "TV Series\\Season 1\\Episode 2.mp4"
+      }
+    }
+  }
+}

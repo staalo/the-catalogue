@@ -96,7 +96,7 @@ describe("streamService", () => {
       seriesId: 4,
       nodeId: 12,
       url: filePath,
-      metadataFile: path.join(moviesPath, "twin-peaks.json"),
+      metadataFile: path.join(moviesPath, "tv-series-with-versions.json"),
     });
 
     const { tryGetTvNodeStream, StreamStatus } =
@@ -114,7 +114,7 @@ describe("streamService", () => {
       seriesId: 4,
       nodeId: 12,
       url: outside,
-      metadataFile: path.join(moviesPath, "twin-peaks.json"),
+      metadataFile: path.join(moviesPath, "tv-series-with-versions.json"),
     });
 
     const { tryGetTvNodeStream, StreamStatus } =
@@ -137,7 +137,7 @@ describe("streamService", () => {
       seriesId: 4,
       nodeId: 12,
       url: playlist,
-      metadataFile: path.join(moviesPath, "twin-peaks.json"),
+      metadataFile: path.join(moviesPath, "tv-series-with-versions.json"),
     });
 
     const { tryGetTvNodeAssetStream, StreamStatus } =

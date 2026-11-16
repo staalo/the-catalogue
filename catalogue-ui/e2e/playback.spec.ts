@@ -220,15 +220,15 @@ test("lists in-progress titles and leaves out finished ones", async ({ page }) =
   await expect(rail(page, "All movies (2)").getByRole("button", { name: /Arrival/ })).toBeVisible();
 });
 
-const northernExposure = {
-  ...movie({ id: 10, title: "Northern Exposure" }),
-  year: 1990,
-  seasonCount: 6,
-  episodeCount: 110,
+const tvSeries = {
+  ...movie({ id: 10, title: "TV Series" }),
+  year: 2000,
+  seasonCount: 1,
+  episodeCount: 2,
 };
-const twinPeaks = {
-  ...movie({ id: 11, title: "Twin Peaks" }),
-  year: 1990,
+const tvSeries2 = {
+  ...movie({ id: 11, title: "TV Series 2" }),
+  year: 2000,
   seasonCount: 2,
   episodeCount: 3,
 };
@@ -274,23 +274,23 @@ async function stubTvProgress(
 }
 
 test("keeps a started series until every episode is finished", async ({ page }) => {
-  await stubSeries(page, [northernExposure, twinPeaks, theLeftovers]);
+  await stubSeries(page, [tvSeries, tvSeries2, theLeftovers]);
   await stubTvProgress(page, [
-    { nodeId: 1, seriesId: northernExposure.id, progress: 40 },
-    { nodeId: 2, seriesId: twinPeaks.id, progress: 100 },
-    { nodeId: 3, seriesId: twinPeaks.id, progress: 100 },
-    { nodeId: 4, seriesId: twinPeaks.id, progress: 100 },
+    { nodeId: 1, seriesId: tvSeries.id, progress: 40 },
+    { nodeId: 2, seriesId: tvSeries2.id, progress: 100 },
+    { nodeId: 3, seriesId: tvSeries2.id, progress: 100 },
+    { nodeId: 4, seriesId: tvSeries2.id, progress: 100 },
     { nodeId: 5, seriesId: theLeftovers.id, progress: 100 },
   ]);
   await enterLibrary(page);
   await page.getByRole("tab", { name: "TV series" }).click();
 
   const continueWatching = rail(page, "Continue watching");
-  await expect(continueWatching.getByRole("button", { name: /Northern Exposure/ })).toBeVisible();
+  await expect(continueWatching.getByRole("button", { name: /TV Series(?! 2 )/ })).toBeVisible();
   await expect(continueWatching.getByRole("button", { name: /The Leftovers/ })).toBeVisible();
-  await expect(continueWatching.getByRole("button", { name: /Twin Peaks/ })).toHaveCount(0);
-  await expect(rail(page, "All series (3)").getByRole("button", { name: /Twin Peaks/ })).toBeVisible();
-  await expect(rail(page, "All series (3)").getByRole("button", { name: /Northern Exposure/ })).toBeVisible();
+  await expect(continueWatching.getByRole("button", { name: /TV Series 2 / })).toHaveCount(0);
+  await expect(rail(page, "All series (3)").getByRole("button", { name: /TV Series 2 / })).toBeVisible();
+  await expect(rail(page, "All series (3)").getByRole("button", { name: /TV Series(?! 2 )/ })).toBeVisible();
 });
 
 test("shows a warning when playback progress cannot be synchronized", async ({ page }) => {

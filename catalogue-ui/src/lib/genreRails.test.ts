@@ -13,9 +13,9 @@ function title(values: Pick<Media, 'id' | 'title' | 'type' | 'genres'>): Media {
   };
 }
 
-const northernExposure = title({
+const tvSeries = title({
   id: 1,
-  title: 'Northern Exposure',
+  title: 'TV Series',
   type: 'tv',
   genres: [
     { id: 35, name: 'Comedy' },
@@ -24,15 +24,15 @@ const northernExposure = title({
   ],
 });
 
-const twinPeaks = title({
+const tvSeries2 = title({
   id: 2,
-  title: 'Twin Peaks',
+  title: 'TV Series 2',
   type: 'tv',
   genres: [{ id: 18, name: ' drama ' }],
 });
 
 test('gives every TV genre its own rail', () => {
-  const rails = genreRailsFor([northernExposure, twinPeaks]);
+  const rails = genreRailsFor([tvSeries, tvSeries2]);
 
   expect(rails.map((rail) => rail.genre)).toEqual([
     'Comedy',
@@ -40,8 +40,8 @@ test('gives every TV genre its own rail', () => {
     'Sci-Fi & Fantasy',
   ]);
   expect(rails.find((rail) => rail.genre === 'Drama')?.items.map((item) => item.title)).toEqual([
-    'Northern Exposure',
-    'Twin Peaks',
+    'TV Series',
+    'TV Series 2',
   ]);
   expect(rails.find((rail) => rail.genre === 'Comedy')?.items).toHaveLength(1);
 });

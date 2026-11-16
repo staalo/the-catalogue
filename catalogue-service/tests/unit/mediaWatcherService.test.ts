@@ -1,5 +1,16 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const examplesDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../../examples",
+);
+
+function exampleJson(name: string): string {
+  return readFileSync(path.join(examplesDir, name), "utf8");
+}
 
 function metadataFilePath(filePath: string): string {
   return path.resolve(filePath).replace(/\\/g, "/");
@@ -295,11 +306,11 @@ describe("mediaWatcherService delete cleanup", () => {
     const unlinkHandler = state.handlers["unlink"];
     expect(unlinkHandler).toBeTypeOf("function");
 
-    await unlinkHandler("D:/media/movies/big-fish.json");
+    await unlinkHandler("D:/media/movies/movie-with-extras.json");
 
     expect(state.deleteMoviesByMetadataFileMock).toHaveBeenCalledTimes(1);
     expect(state.deleteMoviesByMetadataFileMock).toHaveBeenCalledWith(
-      metadataFilePath("D:/media/movies/big-fish.json"),
+      metadataFilePath("D:/media/movies/movie-with-extras.json"),
     );
     expect(state.deleteMoviesByUrlsMock).not.toHaveBeenCalled();
   }, 15000);
@@ -323,28 +334,7 @@ describe("mediaWatcherService delete cleanup", () => {
       moviesPath: "C:/temp/leffat",
       tvPath: null,
     });
-    state.readFileMock.mockResolvedValue(
-      JSON.stringify({
-        DVD: {
-          Title: "Big Fish",
-          Year: 2003,
-          Runtime: 120,
-          File: "Big Fish\\big-fish.mp4",
-        },
-        Extras: {
-          "1": {
-            Title: "Edward Bloom at Large",
-            Runtime: "8:46",
-            File: "Big Fish\\edward-bloom-at-large.mp4",
-          },
-          "2": {
-            Title: "Amos at the Circus",
-            Runtime: "4:38",
-            File: "Big Fish\\amos-at-the-circus.mp4",
-          },
-        },
-      }),
-    );
+    state.readFileMock.mockResolvedValue(exampleJson("movie-with-extras.json"));
 
     const service = await import("../../src/modules/media-watcher/index.js");
 
@@ -353,10 +343,10 @@ describe("mediaWatcherService delete cleanup", () => {
     const addHandler = state.handlers["add"];
     expect(addHandler).toBeTypeOf("function");
 
-    await addHandler("C:/temp/leffat/big-fish.json");
+    await addHandler("C:/temp/leffat/movie-with-extras.json");
 
     expect(state.searchMovieOnTmdbMock).toHaveBeenCalledTimes(1);
-    expect(state.searchMovieOnTmdbMock).toHaveBeenCalledWith("Big Fish", 2003);
+    expect(state.searchMovieOnTmdbMock).toHaveBeenCalledWith("Movie", 2000);
 
     expect(state.insertDiscoveredMovieMock).toHaveBeenCalledTimes(1);
     expect(state.insertDiscoveredSeriesMock).not.toHaveBeenCalled();
@@ -365,11 +355,11 @@ describe("mediaWatcherService delete cleanup", () => {
     const moviePayload = movieCall?.[0] as Record<string, unknown> | undefined;
     expect(moviePayload).toBeDefined();
     expect(moviePayload).toMatchObject({
-      title: "Big Fish",
-      url: storagePath("C:/temp/leffat", "Big Fish\\big-fish.mp4"),
+      title: "Movie",
+      url: storagePath("C:/temp/leffat", "Movie\\master.m3u8"),
       hasExtras: true,
       runtime: 120,
-      metadataFile: metadataFilePath("C:/temp/leffat/big-fish.json"),
+      metadataFile: metadataFilePath("C:/temp/leffat/movie-with-extras.json"),
     });
 
     expect(state.insertMovieExtrasMock).toHaveBeenCalledTimes(1);
@@ -377,14 +367,14 @@ describe("mediaWatcherService delete cleanup", () => {
     expect(movieId).toBe(1);
     expect(extras).toEqual([
       {
-        title: "Edward Bloom at Large",
-        runtime: "8:46",
-        url: storagePath("C:/temp/leffat", "Big Fish\\edward-bloom-at-large.mp4"),
+        title: "Bonus Feature",
+        runtime: "8:00",
+        url: storagePath("C:/temp/leffat", "Movie\\Bonus Feature\\master.m3u8"),
       },
       {
-        title: "Amos at the Circus",
-        runtime: "4:38",
-        url: storagePath("C:/temp/leffat", "Big Fish\\amos-at-the-circus.mp4"),
+        title: "Bonus Feature 2",
+        runtime: "5:00",
+        url: storagePath("C:/temp/leffat", "Movie\\Bonus Feature 2\\master.m3u8"),
       },
     ]);
   });
@@ -394,16 +384,7 @@ describe("mediaWatcherService delete cleanup", () => {
       moviesPath: "C:/temp/leffat",
       tvPath: null,
     });
-    state.readFileMock.mockResolvedValue(
-      JSON.stringify({
-        DVD: {
-          Title: "Jackie Brown",
-          Year: 1997,
-          Runtime: 148,
-          File: "Jackie Brown\\master.m3u8",
-        },
-      }),
-    );
+    state.readFileMock.mockResolvedValue(exampleJson("movie.json"));
 
     const service = await import("../../src/modules/media-watcher/index.js");
 
@@ -414,8 +395,8 @@ describe("mediaWatcherService delete cleanup", () => {
     expect(addHandler).toBeTypeOf("function");
     expect(unlinkHandler).toBeTypeOf("function");
 
-    await addHandler("C:/temp/leffat/jackie-brown.json");
-    await unlinkHandler("C:/temp/leffat/jackie-brown.json");
+    await addHandler("C:/temp/leffat/movie.json");
+    await unlinkHandler("C:/temp/leffat/movie.json");
 
     expect(state.insertDiscoveredMovieMock).toHaveBeenCalledTimes(1);
     expect(state.insertMovieExtrasMock).not.toHaveBeenCalled();
@@ -424,15 +405,15 @@ describe("mediaWatcherService delete cleanup", () => {
     const moviePayload = movieCall?.[0] as Record<string, unknown> | undefined;
     expect(moviePayload).toBeDefined();
     expect(moviePayload).toMatchObject({
-      title: "Jackie Brown",
-      url: storagePath("C:/temp/leffat", "Jackie Brown\\master.m3u8"),
+      title: "Movie 2",
+      url: storagePath("C:/temp/leffat", "Movie 2\\master.m3u8"),
       hasExtras: false,
-      runtime: 148,
-      metadataFile: metadataFilePath("C:/temp/leffat/jackie-brown.json"),
+      runtime: 90,
+      metadataFile: metadataFilePath("C:/temp/leffat/movie.json"),
     });
 
     expect(state.deleteMoviesByMetadataFileMock).toHaveBeenCalledWith(
-      metadataFilePath("C:/temp/leffat/jackie-brown.json"),
+      metadataFilePath("C:/temp/leffat/movie.json"),
     );
     expect(state.deleteMoviesByUrlsMock).not.toHaveBeenCalled();
   });
@@ -444,23 +425,7 @@ describe("mediaWatcherService delete cleanup", () => {
     });
     state.movieExistsByUrlMock.mockReturnValue(true);
     state.isMissingTmdbMetadataMock.mockReturnValue(true);
-    state.readFileMock.mockResolvedValue(
-      JSON.stringify({
-        DVD: {
-          Title: "Big Fish",
-          Year: 2003,
-          Runtime: 120,
-          File: "Big Fish\\master.m3u8",
-        },
-        Extras: {
-          "1": {
-            Title: "Edward Bloom at Large",
-            Runtime: "8:46",
-            File: "Big Fish\\Edward Bloom at Large\\master.m3u8",
-          },
-        },
-      }),
-    );
+    state.readFileMock.mockResolvedValue(exampleJson("movie-with-extras.json"));
 
     const service = await import("../../src/modules/media-watcher/index.js");
 
@@ -469,14 +434,14 @@ describe("mediaWatcherService delete cleanup", () => {
     const addHandler = state.handlers["add"];
     expect(addHandler).toBeTypeOf("function");
 
-    await addHandler("C:/temp/leffat/big-fish.json");
+    await addHandler("C:/temp/leffat/movie-with-extras.json");
 
-    expect(state.searchMovieOnTmdbMock).toHaveBeenCalledWith("Big Fish", 2003);
+    expect(state.searchMovieOnTmdbMock).toHaveBeenCalledWith("Movie", 2000);
     expect(state.refreshDiscoveredMovieMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: "Big Fish",
-        url: storagePath("C:/temp/leffat", "Big Fish\\master.m3u8"),
-        metadataFile: metadataFilePath("C:/temp/leffat/big-fish.json"),
+        title: "Movie",
+        url: storagePath("C:/temp/leffat", "Movie\\master.m3u8"),
+        metadataFile: metadataFilePath("C:/temp/leffat/movie-with-extras.json"),
       }),
     );
     expect(state.insertDiscoveredMovieMock).not.toHaveBeenCalled();
@@ -581,9 +546,9 @@ describe("mediaWatcherService delete cleanup", () => {
 
   it("collects only top-level JSON metadata files", async () => {
     state.readdirMock.mockResolvedValue([
-      "big-fish.json",
-      "Jackie Brown",
-      "snowpiercer.json",
+      "movie-with-extras.json",
+      "Movie",
+      "movie.json",
       "Sub/nested.json",
     ]);
 
@@ -591,8 +556,8 @@ describe("mediaWatcherService delete cleanup", () => {
       await import("../../src/modules/media-watcher/mediaWatcherService.js");
 
     await expect(collectJsonMetadataFiles("/media/movies")).resolves.toEqual([
-      "big-fish.json",
-      "snowpiercer.json",
+      "movie-with-extras.json",
+      "movie.json",
     ]);
   });
 
@@ -609,7 +574,7 @@ describe("mediaWatcherService delete cleanup", () => {
     const addHandler = state.handlers["add"];
     expect(addHandler).toBeTypeOf("function");
 
-    await addHandler("C:/temp/leffat/Big Fish/nested.json");
+    await addHandler("C:/temp/leffat/Movie/nested.json");
 
     expect(state.insertDiscoveredMovieMock).not.toHaveBeenCalled();
     expect(state.readFileMock).not.toHaveBeenCalled();
@@ -630,7 +595,7 @@ describe("mediaWatcherService delete cleanup", () => {
     const addHandler = state.handlers["add"];
     expect(addHandler).toBeTypeOf("function");
 
-    await addHandler("C:/temp/leffat/big-fish.json");
+    await addHandler("C:/temp/leffat/movie-with-extras.json");
 
     expect(state.readFileMock).not.toHaveBeenCalled();
     expect(state.searchMovieOnTmdbMock).not.toHaveBeenCalled();
@@ -690,95 +655,70 @@ describe("mediaWatcherService delete cleanup", () => {
       tvPath: "C:/temp/tv",
     });
     state.searchTvOnTmdbMock.mockResolvedValue({
-      id: 1920,
-      name: "Twin Peaks",
-      overview: "A town full of secrets.",
-      first_air_date: "1990-04-08",
-      episode_run_time: [47],
+      id: 100,
+      name: "TV Series 2",
+      overview: "A short series overview.",
+      first_air_date: "2000-01-01",
+      episode_run_time: [45],
       created_by: [
         {
-          id: 12240,
-          credit_id: "52542276760ee3132800068e",
-          name: "David Lynch",
-          original_name: "David Lynch",
+          id: 10,
+          credit_id: "creator-1",
+          name: "Alex Example",
+          original_name: "Alex Example",
           gender: 2,
-          profile_path: "/b8mo2h.jpg",
+          profile_path: "/creator.jpg",
         },
       ],
-      genres: [{ id: 9648, name: "Mystery" }],
+      genres: [{ id: 18, name: "Drama" }],
     });
     state.fetchTvSeasonDetailsMock.mockResolvedValue([
       {
         episodeNumber: 1,
         name: "Pilot",
-        overview: "The body is found.",
-        runtimeMinutes: 95,
+        overview: "The story begins.",
+        runtimeMinutes: 45,
         stillPath: "/pilot.jpg",
       },
     ]);
-    state.readFileMock.mockResolvedValue(
-      JSON.stringify({
-        DVD: { Title: "Twin Peaks", Year: 1990 },
-        Seasons: {
-          "1": {
-            Episodes: {
-              "1": {
-                Original: {
-                  File: "Twin Peaks\\s1\\original\\master.m3u8",
-                  Runtime: "1:30:09",
-                },
-                Alternate: {
-                  File: "Twin Peaks\\s1\\alternate\\master.m3u8",
-                  Runtime: "1:26:57",
-                },
-              },
-            },
-          },
-          Extras: {
-            "1: Featurette": {
-              File: "Twin Peaks\\extras\\featurette.mp4",
-              Runtime: "10:00",
-            },
-          },
-        },
-      }),
-    );
+    state.readFileMock.mockResolvedValue(exampleJson("tv-series-with-versions.json"));
 
     const service = await import("../../src/modules/media-watcher/index.js");
     await service.setupFileWatchers();
 
     const addHandler = state.handlers["add"];
     expect(addHandler).toBeTypeOf("function");
-    await addHandler("C:/temp/tv/twin-peaks.json");
+    await addHandler("C:/temp/tv/tv-series-with-versions.json");
 
     expect(state.searchMovieOnTmdbMock).not.toHaveBeenCalled();
     expect(state.insertDiscoveredMovieMock).not.toHaveBeenCalled();
-    expect(state.searchTvOnTmdbMock).toHaveBeenCalledWith("Twin Peaks", 1990);
-    expect(state.fetchTvSeasonDetailsMock).toHaveBeenCalledWith(1920, 1);
+    expect(state.searchTvOnTmdbMock).toHaveBeenCalledWith("TV Series 2", 2000);
+    expect(state.fetchTvSeasonDetailsMock).toHaveBeenCalledWith(100, 1);
+    expect(state.fetchTvSeasonDetailsMock).toHaveBeenCalledWith(100, 2);
     expect(state.insertSeriesCastMock).not.toHaveBeenCalled();
     expect(state.insertSeriesTrailerMock).not.toHaveBeenCalled();
     expect(state.insertSeriesCrewMock).toHaveBeenCalledWith(1, [
       expect.objectContaining({
-        personId: 12240,
-        name: "David Lynch",
+        personId: 10,
+        name: "Alex Example",
         job: "Creator",
       }),
     ]);
     expect(state.insertSeriesGenresMock).toHaveBeenCalledWith(1, [
-      { id: 9648, name: "Mystery" },
+      { id: 18, name: "Drama" },
     ]);
     expect(state.insertDiscoveredSeriesMock).toHaveBeenCalledTimes(1);
 
     const [series, nodes] = state.insertDiscoveredSeriesMock.mock.calls[0] ?? [];
     expect(series).toMatchObject({
-      title: "Twin Peaks",
-      overview: "A town full of secrets.",
-      releaseDate: "1990-04-08",
-      year: 1990,
-      runtime: 47,
+      title: "TV Series 2",
+      overview: "A short series overview.",
+      releaseDate: "2000-01-01",
+      year: 2000,
+      runtime: 45,
       hasExtras: true,
-      tmdbId: 1920,
-      metadataFile: metadataFilePath("C:/temp/tv/twin-peaks.json"),
+      tmdbId: 100,
+      metadataFile: metadataFilePath("C:/temp/tv/tv-series-with-versions.json"),
     });
 
     const tree = nodes as Array<{
@@ -794,18 +734,21 @@ describe("mediaWatcherService delete cleanup", () => {
     }>;
     expect(tree[0]?.kind).toBe("season");
     expect(tree[0]?.children[0]?.title).toBe("Pilot");
-    expect(tree[0]?.children[0]?.overview).toBe("The body is found.");
+    expect(tree[0]?.children[0]?.overview).toBe("The story begins.");
     expect(tree[0]?.children[0]?.stillPath).toBe("/pilot.jpg");
     expect(tree[0]?.children[0]?.runtime).toBeNull();
-    expect(tree[0]?.children[0]?.children[0]?.runtime).toBe("1:30:09");
+    expect(tree[0]?.children[0]?.children[0]?.runtime).toBe("45:00");
     expect(tree[0]?.children[0]?.children.map((child) => child.label)).toEqual([
       "Original",
       "Alternate",
     ]);
     expect(tree[0]?.children[0]?.children[0]?.filePath).toBe(
-      storagePath("C:/temp/tv", "Twin Peaks\\s1\\original\\master.m3u8"),
+      storagePath(
+        "C:/temp/tv",
+        "TV Series 2\\Season 1\\Episode 1\\Original\\master.m3u8",
+      ),
     );
-    expect(tree[1]?.kind).toBe("extras");
+    expect(tree[2]?.kind).toBe("extras");
   });
 
   it("removes a TV series by metadata file and leaves movies alone", async () => {
@@ -819,10 +762,10 @@ describe("mediaWatcherService delete cleanup", () => {
 
     const unlinkHandler = state.handlers["unlink"];
     expect(unlinkHandler).toBeTypeOf("function");
-    await unlinkHandler("C:/temp/tv/twin-peaks.json");
+    await unlinkHandler("C:/temp/tv/tv-series-with-versions.json");
 
     expect(state.deleteSeriesByMetadataFileMock).toHaveBeenCalledWith(
-      metadataFilePath("C:/temp/tv/twin-peaks.json"),
+      metadataFilePath("C:/temp/tv/tv-series-with-versions.json"),
     );
     expect(state.deleteMoviesByMetadataFileMock).not.toHaveBeenCalled();
   });
@@ -840,7 +783,7 @@ describe("mediaWatcherService delete cleanup", () => {
 
     const addHandler = state.handlers["add"];
     expect(addHandler).toBeTypeOf("function");
-    await addHandler("C:/temp/tv/twin-peaks.json");
+    await addHandler("C:/temp/tv/tv-series-with-versions.json");
 
     expect(state.readFileMock).not.toHaveBeenCalled();
     expect(state.searchTvOnTmdbMock).not.toHaveBeenCalled();

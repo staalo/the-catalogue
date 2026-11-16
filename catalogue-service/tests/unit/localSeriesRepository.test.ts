@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const previousDatabaseUrl = process.env["DATABASE_URL"];
@@ -16,19 +18,14 @@ let parser: Parser;
 let database: DbModule;
 let schema: Schema;
 
-const manifest = {
-  DVD: { Title: "Twin Peaks", Year: 1990 },
-  Seasons: {
-    "1": {
-      Episodes: {
-        "1": {
-          Original: { File: "Twin Peaks\\original.mp4", Runtime: "1:30:09" },
-          Alternate: { File: "Twin Peaks\\alternate.mp4", Runtime: "1:26:57" },
-        },
-      },
-    },
-  },
-};
+const examplesDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../../examples",
+);
+
+const manifest = JSON.parse(
+  readFileSync(path.join(examplesDir, "tv-series-with-versions.json"), "utf8"),
+) as unknown;
 
 beforeAll(async () => {
   tempDir = await mkdtemp(path.join(tmpdir(), "tv-series-repo-"));
@@ -63,7 +60,7 @@ describe("TV series repository", () => {
         title: parsed.title,
         year: parsed.year,
         hasExtras: parsed.hasExtras,
-        metadataFile: "C:/tv-test/twin-peaks.json",
+        metadataFile: "C:/tv-test/tv-series-with-versions.json",
       },
       parsed.nodes,
     );
@@ -79,7 +76,7 @@ describe("TV series repository", () => {
     const alternate = seriesRepo
       .listSeriesNodes(seriesId)
       .find((node) => node.label === "Alternate");
-    expect(original?.url).toContain("original.mp4");
+    expect(original?.url).toContain("Original/master.m3u8");
     expect(alternate?.id).toBeTypeOf("number");
     if (!original || !alternate) {
       return;
@@ -95,14 +92,14 @@ describe("TV series repository", () => {
 
     const refreshed = parser.parseTvManifest(
       {
-        DVD: { Title: "Twin Peaks", Year: 1990 },
+        DVD: { Title: "TV Series 2", Year: 2000 },
         Seasons: {
           "1": {
             Episodes: {
               "1": {
                 Original: {
-                  File: "Twin Peaks\\original-remux.mp4",
-                  Runtime: "1:30:09",
+                  File: "TV Series 2\\Season 1\\Episode 1\\Original\\remux.m3u8",
+                  Runtime: "45:00",
                 },
               },
             },
@@ -119,10 +116,10 @@ describe("TV series repository", () => {
     expect(
       seriesRepo.refreshDiscoveredSeries(
         {
-          title: "Twin Peaks",
-          year: 1990,
+          title: "TV Series 2",
+          year: 2000,
           hasExtras: false,
-          metadataFile: "C:/tv-test/twin-peaks.json",
+          metadataFile: "C:/tv-test/tv-series-with-versions.json",
         },
         refreshed.nodes,
       ),
@@ -131,7 +128,7 @@ describe("TV series repository", () => {
     const nodes = seriesRepo.listSeriesNodes(seriesId);
     const kept = nodes.find((node) => node.label === "Original");
     expect(kept?.id).toBe(original.id);
-    expect(kept?.url).toContain("original-remux.mp4");
+    expect(kept?.url).toContain("remux.m3u8");
     expect(nodes.some((node) => node.label === "Alternate")).toBe(false);
 
     const progress = database.db

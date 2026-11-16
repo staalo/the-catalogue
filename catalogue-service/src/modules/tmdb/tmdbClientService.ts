@@ -163,7 +163,7 @@ async function rateLimit(): Promise<void> {
 
 /**
  * Build a TMDB movie search URL.
- * Year must be a dedicated filter — putting it in `query` (e.g. "Big Fish 2003")
+ * Year must be a dedicated filter — putting it in `query` (e.g. "Movie 2000")
  * often returns zero results.
  */
 export function buildTmdbMovieSearchUrl(

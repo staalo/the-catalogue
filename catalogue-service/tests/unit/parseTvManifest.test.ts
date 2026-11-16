@@ -62,28 +62,21 @@ describe("parseTvManifest", () => {
   const libraryRoot = "C:/Media/TV";
 
   it("rejects a movie manifest", () => {
-    expect(
-      parseTvManifest(
-        {
-          DVD: {
-            Title: "Big Fish",
-            Year: 2003,
-            File: "Big Fish\\big-fish.mp4",
-          },
-        },
-        libraryRoot,
-      ),
-    ).toBeNull();
+    const raw = JSON.parse(
+      readFileSync(path.join(examplesDir, "movie.json"), "utf8"),
+    ) as unknown;
+
+    expect(parseTvManifest(raw, libraryRoot)).toBeNull();
   });
 
   it("reads single-file episodes from a season", () => {
     const raw = JSON.parse(
-      readFileSync(path.join(examplesDir, "northern-exposure.json"), "utf8"),
+      readFileSync(path.join(examplesDir, "tv-series.json"), "utf8"),
     ) as unknown;
     const parsed = parseTvManifest(raw, libraryRoot);
 
-    expect(parsed?.title).toBe("Northern Exposure");
-    expect(parsed?.year).toBe(1990);
+    expect(parsed?.title).toBe("TV Series");
+    expect(parsed?.year).toBe(2000);
     expect(parsed?.hasExtras).toBe(false);
     expect(parsed?.nodes).toHaveLength(1);
 
@@ -94,7 +87,7 @@ describe("parseTvManifest", () => {
       seasonNumber: 1,
       stableKey: "seasons/season:1",
     });
-    expect(season?.children).toHaveLength(8);
+    expect(season?.children).toHaveLength(2);
 
     const first = season?.children[0];
     expect(first).toMatchObject({
@@ -106,7 +99,7 @@ describe("parseTvManifest", () => {
       stableKey: "seasons/season:1/episode:Episode%201",
       filePath: storagePath(
         libraryRoot,
-        "Northern Exposure\\northern-exposure-s1e1.mp4",
+        "TV Series\\Season 1\\Episode 1.mp4",
       ),
     });
     expect(countPlayable(parsed?.nodes ?? [])).toBe(countFiles(raw));
@@ -114,12 +107,12 @@ describe("parseTvManifest", () => {
 
   it("keeps episode versions, season extras, and nested series extras", () => {
     const raw = JSON.parse(
-      readFileSync(path.join(examplesDir, "twin-peaks.json"), "utf8"),
+      readFileSync(path.join(examplesDir, "tv-series-with-versions.json"), "utf8"),
     ) as unknown;
     const parsed = parseTvManifest(raw, libraryRoot);
 
-    expect(parsed?.title).toBe("Twin Peaks");
-    expect(parsed?.year).toBe(1990);
+    expect(parsed?.title).toBe("TV Series 2");
+    expect(parsed?.year).toBe(2000);
     expect(parsed?.hasExtras).toBe(true);
     expect(parsed?.nodes.map((node) => node.kind)).toEqual([
       "season",
@@ -144,15 +137,15 @@ describe("parseTvManifest", () => {
     expect(pilot?.children[0]).toMatchObject({
       kind: "version",
       title: "Original",
-      runtime: "1:30:09",
+      runtime: "45:00",
       episodeNumber: 1,
       stableKey: "seasons/season:1/episode:1/version:Original",
       filePath: storagePath(
         libraryRoot,
-        "Twin Peaks\\s1\\twin-peaks-s1e1-the-pilot-original-version\\master.m3u8",
+        "TV Series 2\\Season 1\\Episode 1\\Original\\master.m3u8",
       ),
     });
-    expect(pilot?.children[1]?.runtime).toBe("1:26:57");
+    expect(pilot?.children[1]?.runtime).toBe("42:00");
 
     const second = seasonOne?.children[1];
     expect(second).toMatchObject({
@@ -160,52 +153,50 @@ describe("parseTvManifest", () => {
       label: "2",
       title: null,
       episodeNumber: 2,
-      runtime: "44:31",
+      runtime: "45:00",
       children: [],
     });
-    expect(second?.filePath).toContain("twin-peaks-s1e2");
+    expect(second?.filePath).toContain("Episode 2");
 
     const seasonTwo = parsed?.nodes[1];
     const seasonExtras = seasonTwo?.children.find((node) => node.kind === "extras");
     expect(seasonExtras?.children.map((node) => node.title)).toEqual([
       "Deleted Scenes",
-      "Production Documents",
+      "Interview",
     ]);
     expect(seasonExtras?.children[0]).toMatchObject({
       kind: "media",
       label: "1",
-      runtime: "1:00",
+      runtime: "5:00",
     });
 
     const seriesExtras = parsed?.nodes[2];
     expect(seriesExtras?.stableKey).toBe("seasons/extras:Extras");
-    const secrets = findByLabel(
+    const behindTheScenes = findByLabel(
       seriesExtras?.children ?? [],
-      "2: Secrets From Another Place: Creating Twin Peaks",
+      "Behind the Scenes",
     );
-    expect(secrets?.kind).toBe("group");
-    expect(secrets?.title).toBe(
-      "2: Secrets From Another Place: Creating Twin Peaks",
-    );
-    expect(secrets?.children.map((child) => child.title)).toEqual([
-      "Freshly Squeezed: Creating Season One",
-      "Into the Night: Creating Season Two",
+    expect(behindTheScenes?.kind).toBe("group");
+    expect(behindTheScenes?.title).toBe("Behind the Scenes");
+    expect(behindTheScenes?.children.map((child) => child.title)).toEqual([
+      "Part 1",
+      "Part 2",
     ]);
-    expect(secrets?.children[0]).toMatchObject({
+    expect(behindTheScenes?.children[0]).toMatchObject({
       kind: "media",
-      runtime: "30:38",
+      runtime: "20:00",
     });
 
-    const townSign = findByLabel(seriesExtras?.children ?? [], "Town Sign");
-    expect(townSign).toMatchObject({
+    const location = findByLabel(seriesExtras?.children ?? [], "Location 1");
+    expect(location).toMatchObject({
       kind: "media",
-      title: "Town Sign",
-      runtime: "0:35",
+      title: "Location 1",
+      runtime: "1:00",
     });
-    expect(townSign?.filePath).toBe(
+    expect(location?.filePath).toBe(
       storagePath(
         libraryRoot,
-        "Twin Peaks\\extras\\festival-map-town-sign.mp4",
+        "TV Series 2\\Extras\\Gallery\\Locations\\Location 1.mp4",
       ),
     );
     expect(countPlayable(parsed?.nodes ?? [])).toBe(countFiles(raw));
@@ -270,11 +261,11 @@ describe("parseTvManifest", () => {
     const nodes = parsed?.nodes ?? [];
 
     applyEpisodeTitles(nodes, 1, {
-      1: "Northwest Passage",
+      1: "Opening",
       2: "Should Not Replace",
     });
 
-    expect(nodes[0]?.children[0]?.title).toBe("Northwest Passage");
+    expect(nodes[0]?.children[0]?.title).toBe("Opening");
     expect(nodes[0]?.children[0]?.children[0]?.title).toBe("Original");
     expect(nodes[0]?.children[1]?.title).toBe("Kept");
   });
@@ -287,8 +278,8 @@ describe("parseTvManifest", () => {
           "1": {
             Episodes: {
               "1": {
-                Original: { File: "show\\original.mp4", Runtime: "1:30:09" },
-                Alternate: { File: "show\\alternate.mp4", Runtime: "1:26:57" },
+                Original: { File: "show\\original.mp4", Runtime: "45:00" },
+                Alternate: { File: "show\\alternate.mp4", Runtime: "42:00" },
               },
               "2": { File: "show\\e2.mp4" },
               "3": { Title: "Kept", File: "show\\e3.mp4", Runtime: "46:00" },
@@ -304,14 +295,14 @@ describe("parseTvManifest", () => {
       {
         episodeNumber: 1,
         name: "Pilot",
-        overview: "The body is found.",
+        overview: "The story begins.",
         runtimeMinutes: 95,
         stillPath: "/pilot.jpg",
       },
       {
         episodeNumber: 2,
-        name: "Traces to Nowhere",
-        overview: "The investigation spreads.",
+        name: "Continuation",
+        overview: "The story continues.",
         runtimeMinutes: 47,
         stillPath: "/e2.jpg",
       },
@@ -326,14 +317,14 @@ describe("parseTvManifest", () => {
 
     const pilot = nodes[0]?.children[0];
     expect(pilot?.title).toBe("Pilot");
-    expect(pilot?.overview).toBe("The body is found.");
+    expect(pilot?.overview).toBe("The story begins.");
     expect(pilot?.stillPath).toBe("/pilot.jpg");
     expect(pilot?.runtime).toBeNull();
-    expect(pilot?.children[0]?.runtime).toBe("1:30:09");
+    expect(pilot?.children[0]?.runtime).toBe("45:00");
     expect(pilot?.children[0]?.title).toBe("Original");
 
     const second = nodes[0]?.children[1];
-    expect(second?.title).toBe("Traces to Nowhere");
+    expect(second?.title).toBe("Continuation");
     expect(second?.runtime).toBe("47:00");
     expect(second?.stillPath).toBe("/e2.jpg");
 

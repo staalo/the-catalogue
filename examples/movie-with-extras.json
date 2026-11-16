@@ -1,0 +1,20 @@
+{
+  "DVD": {
+    "Title": "Movie",
+    "Year": 2000,
+    "Runtime": 120,
+    "File": "Movie\\master.m3u8"
+  },
+  "Extras": {
+    "1": {
+      "Title": "Bonus Feature",
+      "Runtime": "8:00",
+      "File": "Movie\\Bonus Feature\\master.m3u8"
+    },
+    "2": {
+      "Title": "Bonus Feature 2",
+      "Runtime": "5:00",
+      "File": "Movie\\Bonus Feature 2\\master.m3u8"
+    }
+  }
+}

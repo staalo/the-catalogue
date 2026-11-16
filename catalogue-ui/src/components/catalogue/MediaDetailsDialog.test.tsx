@@ -235,19 +235,19 @@ function tvNode(
   };
 }
 
-const twinPeaks: Media = {
+const tvSeries: Media = {
   id: 4,
-  title: "Twin Peaks",
+  title: "TV Series 2",
   type: "tv",
-  year: "1990",
+  year: "2000",
   meta: "2 seasons  ·  3 episodes",
   image: "",
   backdrop: "",
-  description: "A town full of secrets.",
+  description: "A short series overview.",
   genres: [{ id: 18, name: "Drama" }],
 };
 
-const twinPeaksNodes = [
+const tvSeriesNodes = [
   tvNode({
     id: 1,
     kind: "season",
@@ -259,7 +259,7 @@ const twinPeaksNodes = [
         kind: "episode",
         label: "1",
         title: "Pilot",
-        overview: "The body is found.",
+        overview: "The story begins.",
         stillPath: "/pilot.jpg",
         seasonNumber: 1,
         episodeNumber: 1,
@@ -269,7 +269,7 @@ const twinPeaksNodes = [
             kind: "version",
             label: "Original",
             title: "Original",
-            runtime: "1:30:09",
+            runtime: "45:00",
             url: "stream/tv/4/nodes/3/master.m3u8",
             seasonNumber: 1,
             episodeNumber: 1,
@@ -279,7 +279,7 @@ const twinPeaksNodes = [
             kind: "version",
             label: "Alternate",
             title: "Alternate",
-            runtime: "1:26:57",
+            runtime: "42:00",
             url: "stream/tv/4/nodes/4/master.m3u8",
             seasonNumber: 1,
             episodeNumber: 1,
@@ -290,8 +290,8 @@ const twinPeaksNodes = [
         id: 20,
         kind: "episode",
         label: "2",
-        overview: "The investigation spreads.",
-        runtime: "44:31",
+        overview: "The story continues.",
+        runtime: "45:00",
         url: "stream/tv/4/nodes/20/master.m3u8",
         seasonNumber: 1,
         episodeNumber: 2,
@@ -304,9 +304,9 @@ const twinPeaksNodes = [
           tvNode({
             id: 22,
             kind: "media",
-            label: "Log Lady Intro",
-            title: "Log Lady Intro",
-            runtime: "0:30",
+            label: "Bonus Feature",
+            title: "Bonus Feature",
+            runtime: "10:00",
             url: "stream/tv/4/nodes/22/log-lady.mp4",
           }),
         ],
@@ -329,7 +329,7 @@ const twinPeaksNodes = [
             kind: "media",
             label: "Deleted Scenes",
             title: "Deleted Scenes",
-            runtime: "1:00",
+            runtime: "5:00",
             url: "stream/tv/4/nodes/8/deleted.mp4",
           }),
         ],
@@ -344,9 +344,9 @@ const twinPeaksNodes = [
       tvNode({
         id: 10,
         kind: "media",
-        label: "A Slice of Lynch",
-        title: "A Slice of Lynch",
-        runtime: "30:02",
+        label: "Featurette",
+        title: "Featurette",
+        runtime: "15:00",
         url: "stream/tv/4/nodes/10/lynch.mp4",
       }),
     ],
@@ -365,9 +365,9 @@ test("lists both episode versions and separates season extras from series extras
   const onPlaySeries = vi.fn();
   const screen = await render(
     <MediaDetailsDialog
-      item={twinPeaks}
+      item={tvSeries}
       seriesStatus="ready"
-      seriesNodes={twinPeaksNodes}
+      seriesNodes={tvSeriesNodes}
       onClose={vi.fn()}
       onPlay={vi.fn()}
       onPlayExtra={vi.fn()}
@@ -380,15 +380,15 @@ test("lists both episode versions and separates season extras from series extras
   const original = dialog.getByRole("article", { name: "Episode 1 · Pilot · Original" });
   const alternate = dialog.getByRole("article", { name: "Episode 1 · Pilot · Alternate" });
 
-  await expect.element(dialog.getByRole("heading", { name: "Twin Peaks" })).toBeVisible();
+  await expect.element(dialog.getByRole("heading", { name: "TV Series 2" })).toBeVisible();
   const start = dialog.getByRole("region", { name: "Start watching" });
   const continueWatching = start.getByRole("button", { name: "Continue" });
   await expect.element(continueWatching).toBeVisible();
   await expect.element(start.getByRole("progressbar", { name: "40% watched" })).toBeVisible();
-  await expect.element(start.getByText("36m / 1h 30m")).toBeVisible();
+  await expect.element(start.getByText("18m / 45m")).toBeVisible();
   await expect.element(dialog.getByRole("button", { name: "Play now" })).not.toBeInTheDocument();
   await expect.element(dialog.getByRole("button", { name: "Next episode" })).not.toBeInTheDocument();
-  expect(isBefore(dialog.getByText(twinPeaks.description).element(), start.element())).toBe(true);
+  expect(isBefore(dialog.getByText(tvSeries.description).element(), start.element())).toBe(true);
   expect(isBefore(start.element(), dialog.getByRole("region", { name: "Season 1" }).element())).toBe(
     true,
   );
@@ -398,15 +398,15 @@ test("lists both episode versions and separates season extras from series extras
       continueWatching.element(),
     ),
   ).toBe(true);
-  await expect.element(original.getByText("The body is found.")).toBeVisible();
-  await expect.element(alternate.getByText("The body is found.")).toBeVisible();
-  await expect.element(original.getByText("36m / 1h 30m")).toBeVisible();
-  await expect.element(alternate.getByText("0m / 1h 27m")).not.toBeInTheDocument();
-  await expect.element(alternate.getByText("1h 27m", { exact: true })).toBeVisible();
+  await expect.element(original.getByText("The story begins.")).toBeVisible();
+  await expect.element(alternate.getByText("The story begins.")).toBeVisible();
+  await expect.element(original.getByText("18m / 45m")).toBeVisible();
+  await expect.element(alternate.getByText("0m / 42m")).not.toBeInTheDocument();
+  await expect.element(alternate.getByText("42m", { exact: true })).toBeVisible();
   await expect
     .element(dialog.getByRole("article", { name: "Episode 2" }).getByText("45m / 45m"))
     .toBeVisible();
-  await expect.element(dialog.getByText("0m / 1m")).toBeVisible();
+  await expect.element(dialog.getByText("5m / 10m")).toBeVisible();
   await expect
     .element(original.getByRole("img", { name: "Episode 1 · Pilot · Original still" }))
     .toHaveAttribute("src", "https://image.tmdb.org/t/p/w300/pilot.jpg");
@@ -425,7 +425,7 @@ test("lists both episode versions and separates season extras from series extras
   await expect.poll(() => progressFill(unwatched.element())).toBe(0);
   await expect.poll(() => progressFill(finished.element())).toBeCloseTo(1, 2);
   expect(watchedColor(halfway.element())).toBe("rgb(59, 130, 246)");
-  const halfwayTime = original.getByText("36m / 1h 30m");
+  const halfwayTime = original.getByText("18m / 45m");
   await expect.poll(() => halfwayTime.element().getBoundingClientRect().left)
     .toBeGreaterThanOrEqual(halfway.element().getBoundingClientRect().right - 1);
 
@@ -435,11 +435,11 @@ test("lists both episode versions and separates season extras from series extras
   const seasonTwoTitle = seasonTwo.getByRole("heading", { name: "Season 2", exact: true });
   const seasonTwoExtras = seasonTwo.getByRole("heading", { name: "Season 2 - Extras" });
   await expect.element(seasonOneExtras).toBeVisible();
-  await expect.element(seasonOne.getByRole("button", { name: /Log Lady Intro/ })).toBeVisible();
+  await expect.element(seasonOne.getByRole("button", { name: /Bonus Feature/ })).toBeVisible();
   await expect.element(seasonTwoExtras).toBeVisible();
   await expect.element(seasonTwo.getByRole("button", { name: /Deleted Scenes/ })).toBeVisible();
   await expect
-    .element(seasonTwo.getByRole("button", { name: /Slice of Lynch/ }))
+    .element(seasonTwo.getByRole("button", { name: /Featurette/ }))
     .not.toBeInTheDocument();
 
   const extras = dialog.getByRole("region", { name: "Extras" });
@@ -447,7 +447,7 @@ test("lists both episode versions and separates season extras from series extras
   expect(isBefore(seasonOneExtras.element(), seasonTwoTitle.element())).toBe(true);
   expect(isBefore(seasonTwoTitle.element(), seasonTwoExtras.element())).toBe(true);
   expect(isBefore(seasonTwoExtras.element(), seriesExtras.element())).toBe(true);
-  await expect.element(extras.getByRole("button", { name: /Slice of Lynch/ })).toBeVisible();
+  await expect.element(extras.getByRole("button", { name: /Featurette/ })).toBeVisible();
   await expect
     .element(extras.getByRole("button", { name: /Deleted Scenes/ }))
     .not.toBeInTheDocument();
@@ -470,9 +470,9 @@ test("plays the first episode when nothing has been watched", async () => {
   const onPlaySeries = vi.fn();
   const screen = await render(
     <MediaDetailsDialog
-      item={twinPeaks}
+      item={tvSeries}
       seriesStatus="ready"
-      seriesNodes={twinPeaksNodes}
+      seriesNodes={tvSeriesNodes}
       onClose={vi.fn()}
       onPlay={vi.fn()}
       onPlayExtra={vi.fn()}
@@ -485,7 +485,7 @@ test("plays the first episode when nothing has been watched", async () => {
   const playNow = start.getByRole("button", { name: "Play now" });
   await expect.element(playNow).toBeVisible();
   await expect.element(start.getByRole("progressbar")).not.toBeInTheDocument();
-  expect(isBefore(screen.getByText(twinPeaks.description).element(), start.element())).toBe(true);
+  expect(isBefore(screen.getByText(tvSeries.description).element(), start.element())).toBe(true);
 
   await playNow.click();
 
@@ -503,9 +503,9 @@ test("plays the next episode when earlier episodes are finished", async () => {
   const onPlaySeries = vi.fn();
   const screen = await render(
     <MediaDetailsDialog
-      item={twinPeaks}
+      item={tvSeries}
       seriesStatus="ready"
-      seriesNodes={twinPeaksNodes}
+      seriesNodes={tvSeriesNodes}
       onClose={vi.fn()}
       onPlay={vi.fn()}
       onPlayExtra={vi.fn()}
@@ -529,7 +529,7 @@ test("plays the next episode when earlier episodes are finished", async () => {
 test("says when a series cannot be loaded", async () => {
   const screen = await render(
     <MediaDetailsDialog
-      item={twinPeaks}
+      item={tvSeries}
       seriesStatus="error"
       onClose={vi.fn()}
       onPlay={vi.fn()}
