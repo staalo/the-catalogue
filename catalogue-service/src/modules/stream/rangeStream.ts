@@ -8,9 +8,9 @@ export type ResolvedByteRange =
   | { status: "unsatisfiable" };
 
 /**
- * Resolve a single HTTP byte range the same way ASP.NET Core
- * `PhysicalFile(..., enableRangeProcessing: true)` does:
- * missing/malformed/multi-range → full file; unsatisfiable → 416.
+ * Resolve a single HTTP byte range for a file response.
+ * A missing, malformed, or multi-range header serves the full file.
+ * An unsatisfiable range is reported as 416.
  */
 export function resolveByteRange(
   rangeHeader: string | undefined,

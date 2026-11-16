@@ -39,7 +39,6 @@ export interface BrowseResult {
 
 /**
  * Browse the shared movie library.
- * Mirrors MovieBrowseService.BrowseMovies() + LocalMovieBrowseRepository.BrowseMovies().
  */
 export async function browseMovies(page: number): Promise<BrowseResult> {
   const mediaPaths = getMediaPaths();

@@ -40,9 +40,26 @@ home server, or local Kubernetes cluster.
    password, and optional username. All profiles use the same configured media
    collection, while account details and playback progress remain separate.
 
-Manifest file paths can refer to `.mp4`, `.mkv`, `.avi`, `.mov`, `.m4v`,
-`.flv`, `.webm`, `.m3u8`, and `.ts` media. A clear title and release year in
-the JSON produce better TMDB metadata matches.
+A clear title and release year in the JSON produce better TMDB metadata
+matches.
+
+## Video formats
+
+Manifest `File` paths can refer to `.mp4`, `.mkv`, `.avi`, `.mov`, `.m4v`,
+`.webm`, and `.m3u8` media. What the player can offer depends on the format.
+
+**HLS (`.m3u8`).** The playlist supplies selectable audio tracks and
+subtitles. When the stream includes more than one audio track, playback shows
+an audio menu. Subtitle choices come from the playlist itself.
+
+**`.mp4` and `.webm`.** These files play their audio as stored, with no audio
+track menu. Subtitles are optional WebVTT files in the same folder as the
+video, named `{basename}-{language}.vtt`. Beside `jackie-brown.mp4`,
+`jackie-brown-en.vtt` is offered as English and `jackie-brown-fi.vtt` as
+Finnish. The language tag is two or three letters, optionally followed by a
+region such as `en-US`.
+
+**Other formats.** `.mkv`, `.avi`, `.mov`, and `.m4v` play the video file.
 
 ## Prepare the media library
 

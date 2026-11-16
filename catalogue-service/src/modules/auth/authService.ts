@@ -12,7 +12,7 @@ import {
   ConflictError,
   UnauthorizedError,
 } from "../../shared/errors/AppError.js";
-import { assertPasswordMeetsIdentityRules } from "./passwordPolicy.js";
+import { assertPasswordMeetsPolicy } from "./passwordPolicy.js";
 
 export interface AuthUser {
   id: string;
@@ -76,7 +76,7 @@ export async function registerUser(
     throw new BadRequestError("email is invalid");
   }
 
-  assertPasswordMeetsIdentityRules(input.password);
+  assertPasswordMeetsPolicy(input.password);
 
   if (findUserByEmailOrUserName(email, userName)) {
     throw new ConflictError(

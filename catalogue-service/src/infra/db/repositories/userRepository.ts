@@ -86,8 +86,6 @@ export function isUniqueConstraintError(error: unknown): boolean {
 
 /**
  * Create a new user with a bcrypt-hashed password.
- * NOTE: This service manages its own user records independently of the
- * .NET ASP.NET Identity tables. Existing .NET users must be re-created here.
  */
 export async function createUser(input: CreateUserInput): Promise<CreatedUser> {
   const id = randomUUID();

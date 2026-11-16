@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 
 /**
- * Health routes — mirrors .NET's GET /ping endpoint.
+ * Liveness check at GET /ping.
  */
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
   app.get("/ping", async (_request, reply) => {
