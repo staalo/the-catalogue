@@ -19,7 +19,7 @@ function node(
   };
 }
 
-const twinPeaks = [
+const tvSeries = [
   node({
     id: 1,
     kind: "season",
@@ -31,7 +31,7 @@ const twinPeaks = [
         kind: "episode",
         label: "1",
         title: "Pilot",
-        overview: "The body is found.",
+        overview: "The story begins.",
         stillPath: "/pilot.jpg",
         seasonNumber: 1,
         episodeNumber: 1,
@@ -41,7 +41,7 @@ const twinPeaks = [
             kind: "version",
             label: "Original",
             title: "Original",
-            runtime: "1:30:09",
+            runtime: "45:00",
             overview: "Do not use this cut's synopsis.",
             stillPath: "/original-only.jpg",
             url: "stream/tv/4/nodes/3/master.m3u8",
@@ -53,7 +53,7 @@ const twinPeaks = [
             kind: "version",
             label: "Alternate",
             title: "Alternate",
-            runtime: "1:26:57",
+            runtime: "42:00",
             url: "stream/tv/4/nodes/4/master.m3u8",
             seasonNumber: 1,
             episodeNumber: 1,
@@ -65,8 +65,8 @@ const twinPeaks = [
         kind: "episode",
         label: "2",
         title: null,
-        runtime: "44:31",
-        overview: "The investigation spreads.",
+        runtime: "45:00",
+        overview: "The story continues.",
         url: "stream/tv/4/nodes/5/master.m3u8",
         seasonNumber: 1,
         episodeNumber: 2,
@@ -90,7 +90,7 @@ const twinPeaks = [
             kind: "media",
             label: "1",
             title: "Deleted Scenes",
-            runtime: "1:00",
+            runtime: "5:00",
             url: "stream/tv/4/nodes/8/deleted.mp4",
             seasonNumber: 2,
           }),
@@ -106,23 +106,23 @@ const twinPeaks = [
       node({
         id: 10,
         kind: "media",
-        label: "A Slice of Lynch",
-        title: "A Slice of Lynch",
-        runtime: "30:02",
+        label: "Featurette",
+        title: "Featurette",
+        runtime: "15:00",
         url: "stream/tv/4/nodes/10/lynch.mp4",
       }),
       node({
         id: 11,
         kind: "group",
-        label: "Secrets From Another Place",
-        title: "Secrets From Another Place",
+        label: "Behind the Scenes",
+        title: "Behind the Scenes",
         children: [
           node({
             id: 12,
             kind: "media",
-            label: "Creating Season One",
-            title: "Creating Season One",
-            runtime: "30:38",
+            label: "Part 1",
+            title: "Part 1",
+            runtime: "20:00",
             url: "stream/tv/4/nodes/12/season-one.mp4",
           }),
         ],
@@ -133,7 +133,7 @@ const twinPeaks = [
 
 test("copies sidecar subtitles onto episode and extra playback", () => {
   const content = listSeriesContent(
-    "Twin Peaks",
+    "TV Series 2",
     [
       node({
         id: 1,
@@ -178,40 +178,40 @@ test("copies sidecar subtitles onto episode and extra playback", () => {
 });
 
 test("gives every cut the episode overview, title, and still", () => {
-  const content = listSeriesContent("Twin Peaks", twinPeaks, 4);
+  const content = listSeriesContent("TV Series 2", tvSeries, 4);
   const [original, alternate] = content.seasons[0]?.episodes ?? [];
 
   expect(original).toMatchObject({
     nodeId: 3,
     heading: "Episode 1 · Pilot · Original",
-    overview: "The body is found.",
-    runtime: "1:30:09",
+    overview: "The story begins.",
+    runtime: "45:00",
     still: "https://image.tmdb.org/t/p/w300/pilot.jpg",
   });
   expect(alternate).toMatchObject({
     nodeId: 4,
     heading: "Episode 1 · Pilot · Alternate",
-    overview: "The body is found.",
-    runtime: "1:26:57",
+    overview: "The story begins.",
+    runtime: "42:00",
     still: "https://image.tmdb.org/t/p/w300/pilot.jpg",
   });
   expect(original?.playback).toMatchObject({
     nodeId: 3,
     seriesId: 4,
     title: "Episode 1 · Pilot · Original",
-    subtitle: "Twin Peaks  ·  Season 1  ·  1:30:09",
+    subtitle: "TV Series 2  ·  Season 1  ·  45:00",
     url: "/api/stream/tv/4/nodes/3/master.m3u8",
   });
   expect(content.seasons[0]?.episodes[2]).toMatchObject({
     nodeId: 5,
     heading: "Episode 2",
-    overview: "The investigation spreads.",
-    runtime: "44:31",
+    overview: "The story continues.",
+    runtime: "45:00",
   });
 });
 
 function episodeRows() {
-  return listSeriesContent("Twin Peaks", twinPeaks, 4).seasons.flatMap((season) => season.episodes);
+  return listSeriesContent("TV Series 2", tvSeries, 4).seasons.flatMap((season) => season.episodes);
 }
 
 test("starts an unwatched series at the first episode", () => {
@@ -231,7 +231,7 @@ test("continues the newest episode that is still in progress", () => {
   ).toMatchObject({
     label: "Continue",
     progress: 20,
-    runtime: "44:31",
+    runtime: "45:00",
     playback: { nodeId: 5 },
   });
 });
@@ -270,54 +270,54 @@ test("starts over once every episode is finished", () => {
 });
 
 test("plays the next episode and skips other cuts of the one that just finished", () => {
-  expect(nextEpisodePlayback("Twin Peaks", twinPeaks, 4, 3)).toMatchObject({
+  expect(nextEpisodePlayback("TV Series 2", tvSeries, 4, 3)).toMatchObject({
     nodeId: 5,
     title: "Episode 2",
   });
-  expect(nextEpisodePlayback("Twin Peaks", twinPeaks, 4, 4)).toMatchObject({
+  expect(nextEpisodePlayback("TV Series 2", tvSeries, 4, 4)).toMatchObject({
     nodeId: 5,
     title: "Episode 2",
   });
-  expect(nextEpisodePlayback("Twin Peaks", twinPeaks, 4, 5)).toBeNull();
-  expect(nextEpisodePlayback("Twin Peaks", twinPeaks, 4, 10)).toBeNull();
+  expect(nextEpisodePlayback("TV Series 2", tvSeries, 4, 5)).toBeNull();
+  expect(nextEpisodePlayback("TV Series 2", tvSeries, 4, 10)).toBeNull();
 });
 
 test("keeps season extras inside that season and series extras after the seasons", () => {
-  const content = listSeriesContent("Twin Peaks", twinPeaks, 4);
+  const content = listSeriesContent("TV Series 2", tvSeries, 4);
 
   expect(content.seasons[0]?.extras).toEqual([]);
   expect(content.seasons[1]?.extras).toMatchObject([
     {
       title: "Deleted Scenes",
       playback: {
-        subtitle: "Twin Peaks · Season 2 extra · 1:00",
+        subtitle: "TV Series 2 · Season 2 extra · 5:00",
       },
     },
   ]);
   expect(content.extras.map((extra) => extra.title)).toEqual([
-    "A Slice of Lynch",
-    "Secrets From Another Place",
+    "Featurette",
+    "Behind the Scenes",
   ]);
   expect(content.extras[1]?.children[0]).toMatchObject({
-    title: "Creating Season One",
-    playback: { subtitle: "Twin Peaks extra · 30:38" },
+    title: "Part 1",
+    playback: { subtitle: "TV Series 2 extra · 20:00" },
   });
-  expect(content.seasons[1]?.extras[0]?.title).not.toBe("A Slice of Lynch");
+  expect(content.seasons[1]?.extras[0]?.title).not.toBe("Featurette");
 });
 
 test("maps a series card from seasons and episodes instead of a runtime", () => {
   const series: SeriesSummary = {
     id: 4,
-    title: "Twin Peaks",
-    originalTitle: "Twin Peaks",
-    overview: "A town full of secrets.",
+    title: "TV Series",
+    originalTitle: "TV Series",
+    overview: "A short series overview.",
     posterPath: "/poster.jpg",
     backdropPath: "/backdrop.jpg",
-    releaseDate: "1990-04-08",
-    year: 1990,
+    releaseDate: "2000-01-01",
+    year: 2000,
     tagline: null,
     seasonCount: 1,
-    episodeCount: 8,
+    episodeCount: 2,
     genres: [
       { id: 18, name: "Drama" },
       { id: 2, name: null },
@@ -327,11 +327,11 @@ test("maps a series card from seasons and episodes instead of a runtime", () => 
   expect(mapSeriesToMedia(series)).toMatchObject({
     id: 4,
     type: "tv",
-    title: "Twin Peaks",
-    year: "1990",
-    meta: "1 season  ·  8 episodes",
-    episodeCount: 8,
-    description: "A town full of secrets.",
+    title: "TV Series",
+    year: "2000",
+    meta: "1 season  ·  2 episodes",
+    episodeCount: 2,
+    description: "A short series overview.",
     url: "",
     image: "https://image.tmdb.org/t/p/w500/poster.jpg",
     genres: [{ id: 18, name: "Drama" }],

@@ -1,0 +1,78 @@
+{
+  "DVD": {
+    "Title": "TV Series 2",
+    "Year": 2000
+  },
+  "Seasons": {
+    "1": {
+      "Episodes": {
+        "1": {
+          "Original": {
+            "File": "TV Series 2\\Season 1\\Episode 1\\Original\\master.m3u8",
+            "Runtime": "45:00"
+          },
+          "Alternate": {
+            "File": "TV Series 2\\Season 1\\Episode 1\\Alternate\\master.m3u8",
+            "Runtime": "42:00"
+          }
+        },
+        "2": {
+          "File": "TV Series 2\\Season 1\\Episode 2\\master.m3u8",
+          "Runtime": "45:00"
+        }
+      }
+    },
+    "2": {
+      "Episodes": {
+        "1": {
+          "File": "TV Series 2\\Season 2\\Episode 1\\master.m3u8",
+          "Runtime": "45:00"
+        }
+      },
+      "Extras": {
+        "1": {
+          "Title": "Deleted Scenes",
+          "File": "TV Series 2\\Season 2\\Deleted Scenes.mp4",
+          "Runtime": "5:00"
+        },
+        "2": {
+          "Title": "Interview",
+          "File": "TV Series 2\\Season 2\\Interview.mp4",
+          "Runtime": "10:00"
+        }
+      }
+    },
+    "Extras": {
+      "Featurette": {
+        "File": "TV Series 2\\Extras\\Featurette.mp4",
+        "Runtime": "15:00"
+      },
+      "Behind the Scenes": {
+        "Part 1": {
+          "File": "TV Series 2\\Extras\\Behind the Scenes\\Part 1.mp4",
+          "Runtime": "20:00"
+        },
+        "Part 2": {
+          "File": "TV Series 2\\Extras\\Behind the Scenes\\Part 2.mp4",
+          "Runtime": "20:00"
+        }
+      },
+      "Gallery": {
+        "Introduction": {
+          "File": "TV Series 2\\Extras\\Gallery\\Introduction.mp4",
+          "Runtime": "3:00"
+        },
+        "Locations": {
+          "Location 1": {
+            "File": "TV Series 2\\Extras\\Gallery\\Locations\\Location 1.mp4",
+            "Runtime": "1:00"
+          },
+          "Location 2": {
+            "File": "TV Series 2\\Extras\\Gallery\\Locations\\Location 2.mp4",
+            "Runtime": "1:00"
+          }
+        }
+      }
+    }
+  }
+}

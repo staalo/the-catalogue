@@ -54,9 +54,8 @@ an audio menu. Subtitle choices come from the playlist itself.
 
 **`.mp4` and `.webm`.** These files play their audio as stored, with no audio
 track menu. Subtitles are optional WebVTT files in the same folder as the
-video, named `{basename}-{language}.vtt`. Beside `jackie-brown.mp4`,
-`jackie-brown-en.vtt` is offered as English and `jackie-brown-fi.vtt` as
-Finnish. The language tag is two or three letters, optionally followed by a
+video, named `{basename}-{language}.vtt`. Beside `movie.mp4`,
+`movie-en.vtt` is offered as English and `movie-fi.vtt` as Finnish. The language tag is two or three letters, optionally followed by a
 region such as `en-US`.
 
 **Other formats.** `.mkv`, `.avi`, `.mov`, and `.m4v` play the video file.
@@ -72,17 +71,17 @@ A typical movies folder looks like this:
 
 ```text
 C:\Media\Movies
-├── big-fish.json
-├── jackie-brown.json
-├── Big Fish
+├── movie.json
+├── movie-with-extras.json
+├── Movie
 │   └── master.m3u8
-└── Jackie Brown
+└── Movie 2
     └── master.m3u8
 ```
 
 Paths inside a manifest are relative to the configured movies or TV root. For
-example, `"File": "Big Fish\\master.m3u8"` resolves to
-`C:\Media\Movies\Big Fish\master.m3u8`.
+example, `"File": "Movie\\master.m3u8"` resolves to
+`C:\Media\Movies\Movie\master.m3u8`.
 
 See [`examples`](examples/README.md) for complete manifests covering a movie
 with extras, a movie without extras, and a TV series.

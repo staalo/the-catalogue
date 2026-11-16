@@ -7,12 +7,12 @@ that belong to it.
 
 Copy and adapt these examples:
 
-- [`big-fish.json`](big-fish.json): a movie with bonus features
-- [`jackie-brown.json`](jackie-brown.json): a movie without bonus features
-- [`northern-exposure.json`](northern-exposure.json): a TV series with one
-  season of single-file episodes
-- [`twin-peaks.json`](twin-peaks.json): a TV series with alternate episode
-  versions, season extras, and nested series extras
+- [`movie-with-extras.json`](movie-with-extras.json): a movie with bonus features
+- [`movie.json`](movie.json): a movie without bonus features
+- [`tv-series.json`](tv-series.json): a TV series with one season of
+  single-file episodes
+- [`tv-series-with-versions.json`](tv-series-with-versions.json): a TV series
+  with alternate episode versions, season extras, and nested series extras
 
 ## Movie metadata
 
@@ -28,16 +28,16 @@ The optional `Extras` object contains bonus features. Its keys only need to be
 unique within the file. Each extra can provide:
 
 - `Title`: name displayed for the bonus feature
-- `Runtime`: duration as a string such as `8:46`
+- `Runtime`: duration as a string such as `8:00`
 - `File`: path relative to the configured movies root
 
 For example, if the movies root is `C:\Media\Movies`, this entry:
 
 ```json
-"File": "Big Fish\\master.m3u8"
+"File": "Movie\\master.m3u8"
 ```
 
-resolves to `C:\Media\Movies\Big Fish\master.m3u8`.
+resolves to `C:\Media\Movies\Movie\master.m3u8`.
 
 ## TV-series metadata
 
@@ -47,10 +47,10 @@ no single feature file. Episodes and extras live under `Seasons`, and every
 
 A season key is the season number. Episodes can be listed in two ways:
 
-- Directly on the season, as in
-  [`northern-exposure.json`](northern-exposure.json). The key is the episode
-  label and the value has a `File`.
-- Inside an `Episodes` object, as in [`twin-peaks.json`](twin-peaks.json).
+- Directly on the season, as in [`tv-series.json`](tv-series.json). The key
+  is the episode label and the value has a `File`.
+- Inside an `Episodes` object, as in
+  [`tv-series-with-versions.json`](tv-series-with-versions.json).
   Keys are usually episode numbers. A value with `File` is the only cut of
   that episode. A value without `File` has more than one version, such as
   `Original` and `Alternate`, and each version has its own `File` and
@@ -63,7 +63,7 @@ Extras usually have a title, either in `Title` or as the object key itself.
 season, or at the top level next to `DVD` and `Seasons`. A value with `File`
 is playable. A value without `File` is a group, and its children can be
 playable items or further groups. `Runtime` is a duration string such as
-`44:31` or `1:30:09`.
+`45:00` or `1:30:00`.
 
 ## Placement
 
@@ -73,17 +73,19 @@ JSON files directly in the configured TV root:
 ```text
 C:\Media
 ├── Movies
-│   ├── big-fish.json
-│   ├── jackie-brown.json
-│   ├── Big Fish
+│   ├── movie.json
+│   ├── movie-with-extras.json
+│   ├── Movie
 │   │   └── master.m3u8
-│   └── Jackie Brown
+│   └── Movie 2
 │       └── master.m3u8
 └── TV
-    ├── northern-exposure.json
-    └── Northern Exposure
-        ├── northern-exposure-s1e1.mp4
-        └── northern-exposure-s1e2.mp4
+    ├── tv-series.json
+    ├── tv-series-with-versions.json
+    └── TV Series
+        └── Season 1
+            ├── Episode 1.mp4
+            └── Episode 2.mp4
 ```
 
 Paths may use `\` as shown in the examples or `/`. Keep every referenced path

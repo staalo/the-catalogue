@@ -11,28 +11,28 @@ import {
 
 describe("buildTmdbMovieSearchUrl", () => {
   it("puts the year in a dedicated filter instead of the query text", () => {
-    const url = buildTmdbMovieSearchUrl("Big Fish", 2003);
+    const url = buildTmdbMovieSearchUrl("Movie", 2000);
 
-    expect(url.searchParams.get("query")).toBe("Big Fish");
-    expect(url.searchParams.get("year")).toBe("2003");
+    expect(url.searchParams.get("query")).toBe("Movie");
+    expect(url.searchParams.get("year")).toBe("2000");
     expect(url.searchParams.get("query")).not.toContain("2003");
   });
 
   it("omits the year filter when no release year is provided", () => {
-    const url = buildTmdbMovieSearchUrl("Jackie Brown");
+    const url = buildTmdbMovieSearchUrl("Movie 2");
 
-    expect(url.searchParams.get("query")).toBe("Jackie Brown");
+    expect(url.searchParams.get("query")).toBe("Movie 2");
     expect(url.searchParams.get("year")).toBeNull();
   });
 });
 
 describe("buildTmdbTvSearchUrl", () => {
   it("filters TV search by first air year", () => {
-    const url = buildTmdbTvSearchUrl("Twin Peaks", 1990);
+    const url = buildTmdbTvSearchUrl("TV Series", 2000);
 
     expect(url.pathname).toBe("/3/search/tv");
-    expect(url.searchParams.get("query")).toBe("Twin Peaks");
-    expect(url.searchParams.get("first_air_date_year")).toBe("1990");
+    expect(url.searchParams.get("query")).toBe("TV Series");
+    expect(url.searchParams.get("first_air_date_year")).toBe("2000");
     expect(url.searchParams.get("year")).toBeNull();
     expect(url.searchParams.get("include_adult")).toBeNull();
   });
@@ -152,17 +152,17 @@ describe("mapTmdbCrewMember", () => {
 
 describe("buildTmdbMovieSearchUrl", () => {
   it("puts the year in a dedicated filter instead of the query text", () => {
-    const url = buildTmdbMovieSearchUrl("Big Fish", 2003);
+    const url = buildTmdbMovieSearchUrl("Movie", 2000);
 
-    expect(url.searchParams.get("query")).toBe("Big Fish");
-    expect(url.searchParams.get("year")).toBe("2003");
+    expect(url.searchParams.get("query")).toBe("Movie");
+    expect(url.searchParams.get("year")).toBe("2000");
     expect(url.searchParams.get("query")).not.toContain("2003");
   });
 
   it("omits the year filter when no release year is provided", () => {
-    const url = buildTmdbMovieSearchUrl("Jackie Brown");
+    const url = buildTmdbMovieSearchUrl("Movie 2");
 
-    expect(url.searchParams.get("query")).toBe("Jackie Brown");
+    expect(url.searchParams.get("query")).toBe("Movie 2");
     expect(url.searchParams.get("year")).toBeNull();
   });
 });
