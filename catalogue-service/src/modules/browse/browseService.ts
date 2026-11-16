@@ -6,6 +6,10 @@ import {
   SERIES_PAGE_SIZE,
 } from "../../infra/db/repositories/localSeriesRepository.js";
 import {
+  attachMovieSubtitles,
+  subtitlesByNodeId,
+} from "../stream/sidecarSubtitles.js";
+import {
   applyStreamUrls,
   mapMovie,
   type MovieResponse,
@@ -23,6 +27,7 @@ export type {
   ExtraResponse,
   GenreResponse,
   MovieResponse,
+  SubtitleTrackResponse,
 } from "../../shared/movies/movieResponse.js";
 
 export interface BrowseResult {
@@ -50,6 +55,7 @@ export async function browseMovies(page: number): Promise<BrowseResult> {
   const totalPages = Math.ceil(totalCount / 20);
 
   const results = movies.map(mapMovie);
+  await attachMovieSubtitles(results);
   applyStreamUrls(results);
 
   return { page, results, totalPages, totalResults: totalCount };
@@ -92,5 +98,6 @@ export async function getSeriesDetail(
     return null;
   }
 
-  return mapSeriesDetail(record.series, record.nodes);
+  const subtitles = await subtitlesByNodeId(record.series.id, record.nodes);
+  return mapSeriesDetail(record.series, record.nodes, subtitles);
 }

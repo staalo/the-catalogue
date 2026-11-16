@@ -131,6 +131,52 @@ const twinPeaks = [
   }),
 ];
 
+test("copies sidecar subtitles onto episode and extra playback", () => {
+  const content = listSeriesContent(
+    "Twin Peaks",
+    [
+      node({
+        id: 1,
+        kind: "season",
+        label: "1",
+        seasonNumber: 1,
+        children: [
+          node({
+            id: 5,
+            kind: "episode",
+            label: "1",
+            episodeNumber: 1,
+            url: "stream/tv/4/nodes/5/episode.mp4",
+            subtitles: [
+              { language: "en", label: "English", url: "stream/tv/4/nodes/5/episode-en.vtt" },
+              { language: "fi", label: "Finnish", url: "stream/tv/4/nodes/5/episode-fi.vtt" },
+            ],
+          }),
+          node({
+            id: 8,
+            kind: "media",
+            label: "Deleted Scenes",
+            title: "Deleted Scenes",
+            url: "stream/tv/4/nodes/8/deleted.mp4",
+            subtitles: [
+              { language: "en", label: "English", url: "stream/tv/4/nodes/8/deleted-en.vtt" },
+            ],
+          }),
+        ],
+      }),
+    ],
+    4,
+  );
+
+  expect(content.seasons[0]?.episodes[0]?.playback?.subtitles).toEqual([
+    { language: "en", label: "English", url: "/api/stream/tv/4/nodes/5/episode-en.vtt" },
+    { language: "fi", label: "Finnish", url: "/api/stream/tv/4/nodes/5/episode-fi.vtt" },
+  ]);
+  expect(content.seasons[0]?.extras[0]?.playback?.subtitles).toEqual([
+    { language: "en", label: "English", url: "/api/stream/tv/4/nodes/8/deleted-en.vtt" },
+  ]);
+});
+
 test("gives every cut the episode overview, title, and still", () => {
   const content = listSeriesContent("Twin Peaks", twinPeaks, 4);
   const [original, alternate] = content.seasons[0]?.episodes ?? [];

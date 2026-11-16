@@ -10,9 +10,11 @@ import {
   queueTvPlaybackProgressUpdate,
 } from '@/api/playback';
 import { useWatchProgressStore } from '@/stores/useWatchProgressStore';
+import type { SubtitleTrack } from '@/types';
 
 type VideoPlayerProps = {
   src: string;
+  subtitles?: SubtitleTrack[];
   mediaId?: number;
   playbackUser?: string;
   playbackKind?: 'movie' | 'tv' | 'extra';
@@ -38,6 +40,11 @@ type NativeAudioTrackList = {
   addEventListener(type: string, listener: EventListener): void;
   removeEventListener(type: string, listener: EventListener): void;
 };
+
+function usesSidecarSubtitles(src: string): boolean {
+  const path = src.split('?')[0]?.split('#')[0] ?? '';
+  return /\.(mp4|webm)$/i.test(path);
+}
 
 function playbackPercent(video: HTMLVideoElement): number | null {
   if (!Number.isFinite(video.duration) || video.duration <= 0) {
@@ -254,6 +261,7 @@ function AudioTrackOverlay({
 
 export function VideoPlayer({
   src,
+  subtitles,
   mediaId,
   playbackUser,
   playbackKind = 'movie',
@@ -268,6 +276,7 @@ export function VideoPlayer({
   const setMovieProgress = useWatchProgressStore((state) => state.setProgress);
   const setExtraProgress = useWatchProgressStore((state) => state.setExtraProgress);
   const setTvProgress = useWatchProgressStore((state) => state.setTvProgress);
+  const tracks = usesSidecarSubtitles(src) ? (subtitles ?? []) : [];
 
   useEffect(() => {
     const video = videoRef.current;
@@ -410,7 +419,17 @@ export function VideoPlayer({
         controls
         autoPlay
         sx={{ width: '100%', aspectRatio: '16/9', background: '#000' }}
-      />
+      >
+        {tracks.map((track) => (
+          <track
+            key={`${track.language}:${track.url}`}
+            kind="subtitles"
+            src={track.url}
+            srcLang={track.language}
+            label={track.label}
+          />
+        ))}
+      </Box>
       <AudioTrackOverlay hls={hlsEngine} videoRef={videoRef} />
     </Box>
   );

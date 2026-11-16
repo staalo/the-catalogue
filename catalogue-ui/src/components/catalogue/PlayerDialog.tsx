@@ -33,6 +33,7 @@ export function PlayerDialog({ target, onClose, onEnded }: PlayerDialogProps) {
             <VideoPlayer
               key={`${target.mediaId ?? ''}:${target.url}`}
               src={target.url}
+              subtitles={target.subtitles}
               mediaId={target.mediaId}
               seriesId={target.seriesId}
               playbackUser={target.playbackUser}

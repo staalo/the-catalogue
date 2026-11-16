@@ -39,11 +39,18 @@ export interface GenreResponse {
   name: string | null;
 }
 
+export interface SubtitleTrackResponse {
+  language: string;
+  label: string;
+  url: string;
+}
+
 export interface ExtraResponse {
   id: number;
   title: string;
   runtime: string;
   url: string;
+  subtitles: SubtitleTrackResponse[];
 }
 
 export interface MovieResponse {
@@ -64,6 +71,7 @@ export interface MovieResponse {
   voteAverage: number;
   voteCount: number;
   url: string;
+  subtitles: SubtitleTrackResponse[];
   hasExtras: boolean;
   cast: CastMemberResponse[];
   crew: CrewMemberResponse[];
@@ -147,6 +155,7 @@ export function mapMovie(m: MovieWithRelations): MovieResponse {
     voteAverage: m.voteAverage,
     voteCount: m.voteCount,
     url: m.url,
+    subtitles: [],
     hasExtras: m.hasExtras,
     cast: m.cast.map((c) => ({
       id: c.id,
@@ -184,6 +193,7 @@ export function mapMovie(m: MovieWithRelations): MovieResponse {
       title: e.title,
       runtime: e.runtime,
       url: e.url,
+      subtitles: [],
     })),
   };
 }

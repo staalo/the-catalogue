@@ -69,5 +69,61 @@ test("keeps the movie runtime in minutes for the detail view", () => {
   expect(mapMovieToMedia(movie)).toMatchObject({
     meta: "2h 35m",
     runtimeMinutes: 155,
+    subtitles: [],
+  });
+});
+
+test("maps sidecar subtitles for the movie and its extras", () => {
+  const movie: MovieResponse = {
+    id: 12,
+    adult: false,
+    homepage: null,
+    imdbId: null,
+    originalLanguage: "en",
+    originalTitle: "Clip",
+    overview: "",
+    popularity: 0,
+    posterPath: null,
+    backdropPath: null,
+    releaseDate: null,
+    runtime: 0,
+    tagline: null,
+    title: "Clip",
+    voteAverage: 0,
+    voteCount: 0,
+    url: "stream/movies/12/clip.mp4",
+    subtitles: [
+      { language: "en", label: "English", url: "stream/movies/12/clip-en.vtt" },
+      { language: "fi", label: "Finnish", url: "stream/movies/12/clip-fi.vtt" },
+    ],
+    hasExtras: true,
+    cast: [],
+    crew: [],
+    genres: [],
+    extras: [
+      {
+        id: 3,
+        title: "Bonus",
+        runtime: "1:00",
+        url: "stream/movies/12/extras/3/bonus.webm",
+        subtitles: [
+          { language: "fi", label: "Finnish", url: "stream/movies/12/extras/3/bonus-fi.vtt" },
+        ],
+      },
+    ],
+  };
+
+  expect(mapMovieToMedia(movie)).toMatchObject({
+    subtitles: [
+      { language: "en", label: "English", url: "/api/stream/movies/12/clip-en.vtt" },
+      { language: "fi", label: "Finnish", url: "/api/stream/movies/12/clip-fi.vtt" },
+    ],
+    extras: [
+      {
+        subtitles: [
+          { language: "fi", label: "Finnish", url: "/api/stream/movies/12/extras/3/bonus-fi.vtt" },
+        ],
+      },
+    ],
   });
 });

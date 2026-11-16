@@ -126,9 +126,11 @@ describe("browseService", () => {
     expect(result.results[0]?.url).toBe(
       "stream/movies/5/Sample Movie (2025).mkv",
     );
+    expect(result.results[0]?.subtitles).toEqual([]);
     expect(result.results[0]?.extras[0]?.url).toBe(
       "stream/movies/5/extras/7/master.m3u8",
     );
+    expect(result.results[0]?.extras[0]?.subtitles).toEqual([]);
     expect(result.results[0]?.cast[0]?.name).toBe("Actor One");
   });
 
@@ -288,5 +290,6 @@ describe("browseService", () => {
     expect(detail?.nodes[0]?.children[0]?.children[0]?.url).toBe(
       "stream/tv/4/nodes/12/master.m3u8",
     );
+    expect(detail?.nodes[0]?.children[0]?.children[0]?.subtitles).toEqual([]);
   });
 });

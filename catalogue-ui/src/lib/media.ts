@@ -1,4 +1,11 @@
-import type { Extra, Media, MovieResponse, NamedGenre, SeriesSummary } from '@/types';
+import type {
+  Extra,
+  Media,
+  MovieResponse,
+  NamedGenre,
+  SeriesSummary,
+  SubtitleTrack,
+} from '@/types';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -198,6 +205,14 @@ export function yearFromReleaseDate(releaseDate: string | null): string {
   return releaseDate.slice(0, 4);
 }
 
+export function mapSubtitleTracks(tracks: SubtitleTrack[] | undefined): SubtitleTrack[] {
+  return (tracks ?? []).map((track) => ({
+    language: track.language,
+    label: track.label,
+    url: toStreamUrl(track.url),
+  }));
+}
+
 export function toStreamUrl(relativeUrl: string | undefined): string {
   if (!relativeUrl) {
     return '';
@@ -219,6 +234,7 @@ export function mapMovieToMedia(movie: MovieResponse): Media {
   const extras: Extra[] = movie.extras.map((extra) => ({
     ...extra,
     url: toStreamUrl(extra.url),
+    subtitles: mapSubtitleTracks(extra.subtitles),
   }));
 
   return {
@@ -232,6 +248,7 @@ export function mapMovieToMedia(movie: MovieResponse): Media {
     backdrop: catalogImage(movie.backdropPath, 'w1280'),
     description: movie.overview ?? '',
     url: toStreamUrl(movie.url),
+    subtitles: mapSubtitleTracks(movie.subtitles),
     extras,
     genres: movie.genres.filter((genre): genre is NamedGenre => Boolean(genre.name)),
     tagline: movie.tagline ?? undefined,

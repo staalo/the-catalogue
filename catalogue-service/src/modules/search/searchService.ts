@@ -1,6 +1,7 @@
 import { searchMoviesByTitle } from "../../infra/db/repositories/searchRepository.js";
 import { searchSeriesByTitle } from "../../infra/db/repositories/localSeriesRepository.js";
 import { getMediaPaths } from "../media-paths/mediaPathService.js";
+import { attachMovieSubtitles } from "../stream/sidecarSubtitles.js";
 import {
   applyStreamUrls,
   mapMovie,
@@ -21,7 +22,7 @@ export interface SearchResult {
 export async function searchMovies(query: string): Promise<SearchResult> {
   const movies = await searchMoviesByTitle(query);
   const results = movies.map(mapMovie);
-
+  await attachMovieSubtitles(results);
   applyStreamUrls(results);
 
   return {

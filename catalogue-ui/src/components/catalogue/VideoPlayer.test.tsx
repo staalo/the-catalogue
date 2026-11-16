@@ -100,6 +100,76 @@ beforeEach(() => {
   });
 });
 
+const englishAndFinnish = [
+  { language: "en", label: "English", url: "/api/stream/movies/12/clip-en.vtt" },
+  { language: "fi", label: "Finnish", url: "/api/stream/movies/12/clip-fi.vtt" },
+];
+
+function trackElements(video: HTMLVideoElement): HTMLTrackElement[] {
+  return [...video.querySelectorAll("track")];
+}
+
+test("adds selectable subtitle tracks for an mp4", async () => {
+  const screen = await render(
+    <VideoPlayer src="/clip.mp4" subtitles={englishAndFinnish} />,
+    { wrapper: ThemeWrapper },
+  );
+
+  const video = videoElement(screen);
+  await expect.poll(() => video.src).toContain("/clip.mp4");
+  const tracks = trackElements(video);
+  expect(tracks.map((track) => track.srclang)).toEqual(["en", "fi"]);
+  expect(tracks.map((track) => track.label)).toEqual(["English", "Finnish"]);
+  expect(tracks.map((track) => track.kind)).toEqual(["subtitles", "subtitles"]);
+  expect(tracks[0]?.src).toContain("/clip-en.vtt");
+  expect(tracks[1]?.src).toContain("/clip-fi.vtt");
+});
+
+test("adds selectable subtitle tracks for a webm", async () => {
+  const screen = await render(
+    <VideoPlayer
+      src="/clip.webm"
+      subtitles={[{ language: "en", label: "English", url: "/clip-en.vtt" }]}
+    />,
+    { wrapper: ThemeWrapper },
+  );
+
+  const video = videoElement(screen);
+  await expect.poll(() => video.src).toContain("/clip.webm");
+  expect(trackElements(video).map((track) => track.srclang)).toEqual(["en"]);
+});
+
+test("ignores sidecar subtitles for mkv", async () => {
+  const screen = await render(
+    <VideoPlayer src="/clip.mkv" subtitles={englishAndFinnish} />,
+    { wrapper: ThemeWrapper },
+  );
+
+  const video = videoElement(screen);
+  await expect.poll(() => video.src).toContain("/clip.mkv");
+  expect(trackElements(video)).toEqual([]);
+});
+
+test("leaves hls playback free of sidecar subtitle tracks", async () => {
+  hlsControl.tracks = [{ name: "English" }, { name: "French" }];
+  const screen = await render(
+    <VideoPlayer src="/movie.m3u8" subtitles={englishAndFinnish} />,
+    { wrapper: ThemeWrapper },
+  );
+
+  const video = videoElement(screen);
+  await expect.poll(() => hlsControl.instances.length).toBeGreaterThan(0);
+  expect(trackElements(video)).toEqual([]);
+  expect(video.src).not.toContain("/movie.m3u8");
+
+  const audioTrack = screen.getByRole("combobox");
+  await expect.element(audioTrack).toHaveTextContent("English");
+  await audioTrack.click();
+  await screen.getByRole("option", { name: "French" }).click();
+  await expect.element(audioTrack).toHaveTextContent("French");
+  expect(hlsControl.instances.at(-1)?.audioTrack).toBe(1);
+});
+
 test("renders a video for a file url", async () => {
   const screen = await render(<VideoPlayer src="/clip.mp4" />, {
     wrapper: ThemeWrapper,
