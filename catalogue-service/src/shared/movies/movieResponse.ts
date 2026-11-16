@@ -2,7 +2,7 @@ import path from "node:path";
 import type { MovieWithRelations } from "../../infra/db/repositories/localMovieRepository.js";
 
 // ---------------------------------------------------------------------------
-// Response types — mirror the .NET DTO contracts exactly.
+// API response types.
 // ---------------------------------------------------------------------------
 
 export interface CastMemberResponse {
@@ -80,12 +80,11 @@ export interface MovieResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Stream URL helpers — exact port of MovieBrowseService.cs
+// Stream URL helpers.
 // ---------------------------------------------------------------------------
 
 /**
  * Extracts a safe filename from an arbitrary file path for use in stream URLs.
- * Mirrors MovieBrowseService.GetStreamFileName().
  */
 export function getStreamFileName(filePath: string): string {
   if (!filePath || filePath.trim() === "") {
@@ -113,7 +112,6 @@ export function getStreamFileName(filePath: string): string {
 
 /**
  * Shapes all stream URLs on a movie result set.
- * Mirrors MovieBrowseService.ApplyStreamUrls().
  */
 export function applyStreamUrls(results: MovieResponse[]): void {
   for (const movie of results) {
@@ -134,7 +132,7 @@ export function applyStreamUrls(results: MovieResponse[]): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Map a database movie (with relations) to the response DTO.
+ * Map a database movie (with relations) to the API response.
  */
 export function mapMovie(m: MovieWithRelations): MovieResponse {
   return {

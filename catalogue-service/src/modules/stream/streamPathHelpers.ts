@@ -2,8 +2,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 
 /**
- * Security: Allowed file extensions for streaming.
- * Mirrors MediaStreamPathHelper.cs
+ * Allowed file extensions for streaming.
  */
 const ALLOWED_EXTENSIONS = new Set([
   ".mp4",
@@ -18,8 +17,7 @@ const ALLOWED_EXTENSIONS = new Set([
 ]);
 
 /**
- * Content type mapping.
- * Mirrors MediaStreamPathHelper.cs
+ * Content type for each allowed extension.
  */
 const CONTENT_TYPES: Record<string, string> = {
   ".mp4": "video/mp4",

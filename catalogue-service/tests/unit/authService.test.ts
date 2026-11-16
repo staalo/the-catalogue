@@ -174,7 +174,7 @@ describe("authService", () => {
     });
   });
 
-  it("rejects passwords that do not meet Identity rules and duplicate accounts", async () => {
+  it("rejects passwords that do not meet the password rules and duplicate accounts", async () => {
     const { registerUser } =
       await import("../../src/modules/auth/authService.js");
 

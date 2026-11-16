@@ -11,8 +11,7 @@ interface BrowseQuery {
 }
 
 /**
- * Browse routes — mirrors BrowseController.cs:
- *   GET /api/browse/browsemovies?page=1  (auth required)
+ * Browse routes. Authentication is required.
  */
 export async function browseRoutes(app: FastifyInstance): Promise<void> {
   app.get<{ Querystring: BrowseQuery }>(

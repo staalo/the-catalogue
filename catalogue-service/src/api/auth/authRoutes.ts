@@ -22,7 +22,7 @@ interface RegisterBody {
 }
 
 /**
- * Auth routes — mirrors the .NET minimal-API endpoints in Program.cs:
+ * Auth routes:
  *   POST /register
  *   POST /userlogin
  *   POST /logout
@@ -113,7 +113,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // GET /pingauth — returns { email } for the active session, kept for .NET parity
+  // GET /pingauth — returns { email } for the active session
   app.get("/pingauth", { preHandler: requireAuth }, async (request, reply) => {
     return reply.send({ email: request.session.email ?? null });
   });

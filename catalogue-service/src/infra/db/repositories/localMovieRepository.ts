@@ -28,9 +28,8 @@ export type MovieWithExtras = InferSelectModel<typeof localMovies> & {
 const PAGE_SIZE = 20;
 
 /**
- * Paginated browse query — mirrors LocalMovieRepository.GetByDirectoryPaginatedAsync.
- * Includes all relations (cast, crew, genres, extras, trailer) via the Drizzle
- * relational query API. Results are ordered by title.
+ * Paginated browse query. Includes cast, crew, genres, extras, and the trailer.
+ * Results are ordered by title.
  */
 export async function getMoviesPaginated(
   directoryPath: string,

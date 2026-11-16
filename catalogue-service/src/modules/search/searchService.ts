@@ -17,7 +17,6 @@ export interface SearchResult {
 
 /**
  * Search local movies by title.
- * Mirrors MovieBrowseService but searches by query instead of directory.
  */
 export async function searchMovies(query: string): Promise<SearchResult> {
   const movies = await searchMoviesByTitle(query);

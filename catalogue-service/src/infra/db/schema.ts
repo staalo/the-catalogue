@@ -2,8 +2,7 @@ import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-or
 import { relations, sql } from 'drizzle-orm';
 
 // ---------------------------------------------------------------------------
-// Users — replaces ASP.NET Identity AspNetUsers.
-// Keeps the same string-based (GUID) primary key convention.
+// Users. Primary keys are strings.
 // ---------------------------------------------------------------------------
 export const users = sqliteTable('users', {
   id:                   text('id').primaryKey(),
@@ -21,7 +20,7 @@ export const users = sqliteTable('users', {
 ]);
 
 // ---------------------------------------------------------------------------
-// LocalMovies — main movie record, mirrors LocalMovieDb.cs.
+// Local movies.
 // ---------------------------------------------------------------------------
 export const localMovies = sqliteTable('local_movies', {
   id:               integer('id').primaryKey({ autoIncrement: true }),
@@ -66,7 +65,7 @@ export const playbackProgress = sqliteTable('playback_progress', {
 ]);
 
 // ---------------------------------------------------------------------------
-// LocalMovieCast — mirrors LocalMovieCastDb.cs.
+// Cast credited on a local movie.
 // ---------------------------------------------------------------------------
 export const localMovieCast = sqliteTable('local_movie_cast', {
   id:                   integer('id').primaryKey({ autoIncrement: true }),
@@ -89,7 +88,7 @@ export const localMovieCast = sqliteTable('local_movie_cast', {
 ]);
 
 // ---------------------------------------------------------------------------
-// LocalMovieCrew — mirrors LocalMovieCrewDb.cs.
+// Crew credited on a local movie.
 // ---------------------------------------------------------------------------
 export const localMovieCrew = sqliteTable('local_movie_crew', {
   id:                   integer('id').primaryKey({ autoIncrement: true }),
@@ -111,7 +110,7 @@ export const localMovieCrew = sqliteTable('local_movie_crew', {
 ]);
 
 // ---------------------------------------------------------------------------
-// LocalMovieGenres — mirrors LocalMovieGenreDb.cs.
+// Genres for a local movie.
 // ---------------------------------------------------------------------------
 export const localMovieGenres = sqliteTable('local_movie_genres', {
   id:           integer('id').primaryKey({ autoIncrement: true }),
@@ -124,7 +123,7 @@ export const localMovieGenres = sqliteTable('local_movie_genres', {
 ]);
 
 // ---------------------------------------------------------------------------
-// LocalMovieExtras — mirrors LocalMovieExtraDb.cs.
+// Extras attached to a local movie.
 // ---------------------------------------------------------------------------
 export const localMovieExtras = sqliteTable('local_movie_extras', {
   id:           integer('id').primaryKey({ autoIncrement: true }),
@@ -138,8 +137,7 @@ export const localMovieExtras = sqliteTable('local_movie_extras', {
 ]);
 
 // ---------------------------------------------------------------------------
-// LocalMovieTrailers — mirrors LocalMovieTrailerDb.cs.
-// One-to-one with LocalMovies (unique FK).
+// Trailer for a local movie. One-to-one with local movies (unique foreign key).
 // ---------------------------------------------------------------------------
 export const localMovieTrailers = sqliteTable('local_movie_trailers', {
   id:           integer('id').primaryKey({ autoIncrement: true }),
@@ -158,8 +156,7 @@ export const localMovieTrailers = sqliteTable('local_movie_trailers', {
 });
 
 // ---------------------------------------------------------------------------
-// TmdbApi — internal TMDb API config, mirrors TmDbApi.cs / SearchContext.
-// Only one row expected in practice.
+// TMDb API config. Only one row is expected.
 // ---------------------------------------------------------------------------
 export const tmdbApi = sqliteTable('tmdb_api', {
   id:         integer('id').primaryKey({ autoIncrement: true }),

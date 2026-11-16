@@ -26,8 +26,7 @@ function sendStreamFile(
 }
 
 /**
- * Stream routes — mirrors StreamController.cs
- * All routes require authentication
+ * Stream routes. Every route requires authentication.
  */
 export async function registerStreamRoutes(
   app: FastifyInstance,

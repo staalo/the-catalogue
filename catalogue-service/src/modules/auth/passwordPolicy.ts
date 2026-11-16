@@ -1,12 +1,9 @@
 import { BadRequestError } from "../../shared/errors/AppError.js";
 
 /**
- * ASP.NET Identity default PasswordOptions, used by AddIdentityApiEndpoints
- * in MovieSearch.Web (no custom Password configuration).
- *
- * @see https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.identity.passwordoptions
+ * Password requirements: length, character classes, and a non-alphanumeric character.
  */
-export const IDENTITY_PASSWORD_OPTIONS = {
+export const PASSWORD_OPTIONS = {
   requiredLength: 6,
   requiredUniqueChars: 1,
   requireNonAlphanumeric: true,
@@ -32,11 +29,11 @@ function isLetterOrDigit(c: string): boolean {
 }
 
 /**
- * Validate a password the same way Identity's PasswordValidator does.
+ * Reject a password that misses the password requirements.
  * Throws BadRequestError listing every failed rule.
  */
-export function assertPasswordMeetsIdentityRules(password: string): void {
-  const options = IDENTITY_PASSWORD_OPTIONS;
+export function assertPasswordMeetsPolicy(password: string): void {
+  const options = PASSWORD_OPTIONS;
   const errors: string[] = [];
   const chars = [...password];
 

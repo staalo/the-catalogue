@@ -5,8 +5,7 @@ import "./types.js";
 export const STREAM_SESSION_RENEW_WINDOW_MS = 10 * 60 * 1000;
 
 /**
- * Fastify preHandler hook — enforces an authenticated session.
- * Mirrors .NET's RequireAuthorization() on protected endpoints.
+ * Fastify preHandler that rejects a request with no authenticated session.
  */
 export async function requireAuth(
   request: FastifyRequest,
