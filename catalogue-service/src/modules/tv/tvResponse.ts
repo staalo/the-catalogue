@@ -19,6 +19,7 @@ import {
   type CrewMemberResponse,
   type ExtraResponse,
   type GenreResponse,
+  type SubtitleTrackResponse,
 } from "../../shared/movies/movieResponse.js";
 import type {
   localSeries,
@@ -40,6 +41,8 @@ export interface TvContentNode {
   stillPath: string | null;
   /** Relative stream path, or null when this node only groups children. */
   url: string | null;
+  /** Sidecar WebVTT tracks for an .mp4 or .webm file. Empty for every other node. */
+  subtitles: SubtitleTrackResponse[];
   seasonNumber: number | null;
   episodeNumber: number | null;
   children: TvContentNode[];
@@ -187,16 +190,18 @@ export function mapSeriesSummary(series: SeriesCatalogueEntry): SeriesSummary {
 export function mapSeriesDetail(
   series: SeriesCatalogueEntry,
   nodes: SeriesNodeRecord[],
+  subtitlesByNodeId: ReadonlyMap<number, SubtitleTrackResponse[]> = new Map(),
 ): SeriesDetail {
   return {
     ...mapSeriesSummary(series),
-    nodes: buildTvContentTree(series.id, nodes),
+    nodes: buildTvContentTree(series.id, nodes, subtitlesByNodeId),
   };
 }
 
 export function buildTvContentTree(
   seriesId: number,
   nodes: SeriesNodeRecord[],
+  subtitlesByNodeId: ReadonlyMap<number, SubtitleTrackResponse[]> = new Map(),
 ): TvContentNode[] {
   const byParent = new Map<number | null, SeriesNodeRecord[]>();
   for (const node of nodes) {
@@ -218,6 +223,7 @@ export function buildTvContentTree(
       url: node.url
         ? `stream/tv/${seriesId}/nodes/${node.id}/${getStreamFileName(node.url)}`
         : null,
+      subtitles: subtitlesByNodeId.get(node.id) ?? [],
       seasonNumber: node.seasonNumber,
       episodeNumber: node.episodeNumber,
       children: children.map(toNode),

@@ -1,10 +1,17 @@
 export type MediaType = 'movie' | 'tv';
 
+export type SubtitleTrack = {
+  language: string;
+  label: string;
+  url: string;
+};
+
 export type Extra = {
   id: number;
   title: string;
   runtime: string;
   url: string;
+  subtitles?: SubtitleTrack[];
 };
 
 export type Genre = {
@@ -64,6 +71,7 @@ export type MovieResponse = {
   voteAverage: number;
   voteCount: number;
   url: string;
+  subtitles?: SubtitleTrack[];
   hasExtras: boolean;
   cast: CastMember[];
   crew: CrewMember[];
@@ -102,6 +110,7 @@ export type Media = {
   continueSeries?: boolean;
   description: string;
   url?: string;
+  subtitles?: SubtitleTrack[];
   extras?: Extra[];
   genres: NamedGenre[];
   tagline?: string;
@@ -148,6 +157,7 @@ export type TvContentNode = {
   overview: string | null;
   stillPath: string | null;
   url: string | null;
+  subtitles?: SubtitleTrack[];
   seasonNumber: number | null;
   episodeNumber: number | null;
   children: TvContentNode[];
@@ -189,6 +199,7 @@ export type PlayerTarget = {
   title: string;
   subtitle: string;
   url: string;
+  subtitles?: SubtitleTrack[];
   mediaId?: number;
   /** Series that owns a TV episode, version, or extra. */
   seriesId?: number;

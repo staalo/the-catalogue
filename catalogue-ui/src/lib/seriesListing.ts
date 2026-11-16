@@ -1,11 +1,12 @@
 import { FINISHED_PROGRESS, isContinueWatching, type SeriesProgressEntry } from '@/lib/continueWatching';
-import { catalogImage, toStreamUrl } from '@/lib/media';
-import type { TvContentNode } from '@/types';
+import { catalogImage, mapSubtitleTracks, toStreamUrl } from '@/lib/media';
+import type { SubtitleTrack, TvContentNode } from '@/types';
 
 export type SeriesPlayback = {
   title: string;
   subtitle: string;
   url: string;
+  subtitles: SubtitleTrack[];
   nodeId: number;
   seriesId: number;
 };
@@ -218,6 +219,7 @@ function expandEpisode(
             title: heading,
             subtitle: [seriesTitle, seasonHeadingText, runtime].filter(Boolean).join(JOINER),
             url,
+            subtitles: mapSubtitleTracks(cut.subtitles),
           }
         : null,
     };
@@ -289,6 +291,7 @@ function toExtra(
           title,
           subtitle: runtime ? `${prefix} · ${runtime}` : prefix,
           url,
+          subtitles: mapSubtitleTracks(node.subtitles),
         }
       : null,
     children,
