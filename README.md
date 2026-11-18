@@ -14,7 +14,11 @@ file and try to infer which title it contains.
 
 An optional [TMDB](https://www.themoviedb.org/) API key uses each manifest's
 title and year to add artwork, release information, genres, cast, crew, and
-trailers. Playback progress is saved to each profile so viewers can continue
+trailers.
+
+This product uses the TMDB API but is not endorsed or certified by TMDB.
+
+Playback progress is saved to each profile so viewers can continue
 where they left off.
 
 The application is self-hosted: the video files and SQLite catalogue database
