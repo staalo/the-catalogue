@@ -5,6 +5,7 @@ import Logout from '@mui/icons-material/Logout';
 import Search from '@mui/icons-material/Search';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import InputBase from '@mui/material/InputBase';
 import Paper from '@mui/material/Paper';
@@ -21,6 +22,7 @@ type AppHeaderProps = {
   onLogin: () => void;
   onLogout: () => void;
   onProfile: () => void;
+  onCredits: () => void;
 };
 
 export function AppHeader({
@@ -33,6 +35,7 @@ export function AppHeader({
   onLogin,
   onLogout,
   onProfile,
+  onCredits,
 }: AppHeaderProps) {
   const [draft, setDraft] = useState(search);
   const publishSearch = useDebounceCallback(onSearchChange, 300);
@@ -73,7 +76,12 @@ export function AppHeader({
       }}
     >
       <Typography
-        sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 800, letterSpacing: '-.06em' }}
+        sx={{
+          fontSize: { xs: 20, md: 24 },
+          fontWeight: 800,
+          letterSpacing: '-.06em',
+          whiteSpace: 'nowrap',
+        }}
       >
         the{' '}
         <Box component="span" sx={{ color: 'primary.main' }}>
@@ -81,6 +89,23 @@ export function AppHeader({
         </Box>
       </Typography>
       <Box sx={{ flex: 1 }} />
+      <Button
+        color="inherit"
+        onClick={onCredits}
+        sx={{
+          flexShrink: 0,
+          minWidth: 0,
+          px: 0.5,
+          py: 0.25,
+          fontSize: 13,
+          fontWeight: 600,
+          lineHeight: 1,
+          textTransform: 'none',
+          color: 'rgba(255,255,255,0.72)',
+        }}
+      >
+        Credits
+      </Button>
       <Paper
         component="label"
         sx={{

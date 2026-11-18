@@ -23,6 +23,7 @@ function headerProps(
     onLogin: vi.fn(),
     onLogout: vi.fn(),
     onProfile: vi.fn(),
+    onCredits: vi.fn(),
     ...overrides,
   };
 }
@@ -64,6 +65,15 @@ test("opens the profile and logs out for a signed-in viewer", async () => {
   expect(props.onLogout).toHaveBeenCalledOnce();
 });
 
+test("opens credits for a signed-out viewer", async () => {
+  const props = headerProps();
+  const screen = await render(<AppHeader {...props} />, { wrapper: ThemeWrapper });
+
+  await screen.getByRole("button", { name: "Credits" }).click();
+
+  expect(props.onCredits).toHaveBeenCalledOnce();
+});
+
 test("hides account actions while authentication is pending", async () => {
   const screen = await render(
     <AppHeader {...headerProps({ authenticated: true, authPending: true, email: "bea@example.com" })} />,
@@ -73,6 +83,7 @@ test("hides account actions while authentication is pending", async () => {
   await expect.element(screen.getByRole("button", { name: "log in" })).not.toBeInTheDocument();
   await expect.element(screen.getByRole("button", { name: "log out" })).not.toBeInTheDocument();
   await expect.element(screen.getByRole("button", { name: "open profile" })).not.toBeInTheDocument();
+  await expect.element(screen.getByRole("button", { name: "Credits" })).toBeVisible();
 });
 
 test("publishes search text after a short pause", async () => {

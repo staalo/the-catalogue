@@ -6,6 +6,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
+import { CreditsDialog } from '@/components/catalogue/CreditsDialog';
 import { Hero } from '@/components/catalogue/Hero';
 import { LoginDialog } from '@/components/catalogue/LoginDialog';
 import { ProfileDialog } from '@/components/catalogue/ProfileDialog';
@@ -33,6 +34,7 @@ export function HomePage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const { data: user, displayUser, authPending } = useCurrentUser();
@@ -126,6 +128,7 @@ export function HomePage() {
           });
         }}
         onProfile={() => setProfileOpen(true)}
+        onCredits={() => setCreditsOpen(true)}
       />
       <Hero
         featured={sessionKnown && !catalogueLoading ? featured : null}
@@ -227,6 +230,7 @@ export function HomePage() {
         userName={shownUser?.userName ?? ''}
         onClose={() => setProfileOpen(false)}
       />
+      <CreditsDialog open={creditsOpen} onClose={() => setCreditsOpen(false)} />
       <MediaDetailsDialog
         item={selected}
         seriesStatus={
